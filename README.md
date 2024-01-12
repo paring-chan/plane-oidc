@@ -1,3 +1,5 @@
+This repo is a fork with the goal to have OpenID Connect Implementation alongside a current release of plane. More details can be found <a href="https://github.com/makeplane/plane/pull/3341" target="_blank">here.</a>
+
 <br /><br />
 
 <p align="center">
