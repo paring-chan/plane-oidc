@@ -22,7 +22,7 @@ class Command(BaseCommand):
                 "key": "ENABLE_SIGNUP",
                 "value": os.environ.get("ENABLE_SIGNUP", "1"),
                 "category": "AUTHENTICATION",
-                "is_encrypted": False, 
+                "is_encrypted": False,
             },
             {
                 "key": "ENABLE_EMAIL_PASSWORD",
@@ -195,5 +195,7 @@ class Command(BaseCommand):
                 )
             else:
                 self.stdout.write(
-                    self.style.WARNING(f"{obj.key} configuration already exists")
+                    self.style.WARNING(
+                        f"{obj.key} configuration already exists"
+                    )
                 )
