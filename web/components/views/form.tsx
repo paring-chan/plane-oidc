@@ -28,9 +28,7 @@ export const ProjectViewForm: React.FC<Props> = observer((props) => {
   const { handleFormSubmit, handleClose, data, preLoadedData } = props;
   // store hooks
   const { projectStates } = useProjectState();
-  const {
-    project: { projectLabels },
-  } = useLabel();
+  const { projectLabels } = useLabel();
   const {
     project: { projectMemberIds },
   } = useMember();
@@ -208,7 +206,7 @@ export const ProjectViewForm: React.FC<Props> = observer((props) => {
         <Button variant="neutral-primary" size="sm" onClick={handleClose} tabIndex={4}>
           Cancel
         </Button>
-        <Button variant="primary" size="sm" type="submit" tabIndex={5}>
+        <Button variant="primary" size="sm" type="submit" tabIndex={5} disabled={isSubmitting}>
           {data
             ? isSubmitting
               ? "Updating View..."

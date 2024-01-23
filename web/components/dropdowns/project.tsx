@@ -2,7 +2,6 @@ import { Fragment, ReactNode, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Combobox } from "@headlessui/react";
 import { usePopper } from "react-popper";
-import { Placement } from "@popperjs/core";
 import { Check, ChevronDown, Search } from "lucide-react";
 // hooks
 import { useProject } from "hooks/store";
@@ -13,18 +12,12 @@ import { cn } from "helpers/common.helper";
 import { renderEmoji } from "helpers/emoji.helper";
 // types
 import { IProject } from "@plane/types";
-import { TButtonVariants } from "./types";
+import { TDropdownProps } from "./types";
 
-type Props = {
+type Props = TDropdownProps & {
   button?: ReactNode;
-  buttonClassName?: string;
-  buttonContainerClassName?: string;
-  buttonVariant: TButtonVariants;
-  className?: string;
-  disabled?: boolean;
   dropdownArrow?: boolean;
   onChange: (val: string) => void;
-  placement?: Placement;
   value: string | null;
   tabIndex?: number;
 };
@@ -166,9 +159,7 @@ export const ProjectDropdown: React.FC<Props> = observer((props) => {
       as="div"
       ref={dropdownRef}
       tabIndex={tabIndex}
-      className={cn("h-full flex-shrink-0", {
-        className,
-      })}
+      className={cn("h-full flex-shrink-0", className)}
       value={value}
       onChange={onChange}
       disabled={disabled}
@@ -271,6 +262,7 @@ export const ProjectDropdown: React.FC<Props> = observer((props) => {
                           active ? "bg-custom-background-80" : ""
                         } ${selected ? "text-custom-text-100" : "text-custom-text-200"}`
                       }
+                      onClick={closeDropdown}
                     >
                       {({ selected }) => (
                         <>

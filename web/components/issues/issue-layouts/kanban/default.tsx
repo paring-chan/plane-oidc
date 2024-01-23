@@ -42,7 +42,7 @@ export interface IGroupByKanBan {
   ) => Promise<TIssue | undefined>;
   viewId?: string;
   disableIssueCreation?: boolean;
-  currentStore?: TCreateModalStoreTypes;
+  storeType?: TCreateModalStoreTypes;
   addIssuesToView?: (issueIds: string[]) => Promise<TIssue>;
   canEditProperties: (projectId: string | undefined) => boolean;
 }
@@ -64,17 +64,17 @@ const GroupByKanBan: React.FC<IGroupByKanBan> = observer((props) => {
     quickAddCallback,
     viewId,
     disableIssueCreation,
-    currentStore,
+    storeType,
     addIssuesToView,
     canEditProperties,
   } = props;
 
   const member = useMember();
   const project = useProject();
-  const projectLabel = useLabel();
+  const label = useLabel();
   const projectState = useProjectState();
 
-  const list = getGroupByColumns(group_by as GroupByColumnTypes, project, projectLabel, projectState, member);
+  const list = getGroupByColumns(group_by as GroupByColumnTypes, project, label, projectState, member);
 
   if (!list) return null;
 
@@ -107,7 +107,7 @@ const GroupByKanBan: React.FC<IGroupByKanBan> = observer((props) => {
                     count={(issueIds as TGroupedIssues)?.[_list.id]?.length || 0}
                     issuePayload={_list.payload}
                     disableIssueCreation={disableIssueCreation || isGroupByCreatedBy}
-                    currentStore={currentStore}
+                    storeType={storeType}
                     addIssuesToView={addIssuesToView}
                     kanbanFilters={kanbanFilters}
                     handleKanbanFilters={handleKanbanFilters}
@@ -163,7 +163,7 @@ export interface IKanBan {
   ) => Promise<TIssue | undefined>;
   viewId?: string;
   disableIssueCreation?: boolean;
-  currentStore?: TCreateModalStoreTypes;
+  storeType?: TCreateModalStoreTypes;
   addIssuesToView?: (issueIds: string[]) => Promise<TIssue>;
   canEditProperties: (projectId: string | undefined) => boolean;
 }
@@ -184,7 +184,7 @@ export const KanBan: React.FC<IKanBan> = observer((props) => {
     quickAddCallback,
     viewId,
     disableIssueCreation,
-    currentStore,
+    storeType,
     addIssuesToView,
     canEditProperties,
   } = props;
@@ -199,7 +199,7 @@ export const KanBan: React.FC<IKanBan> = observer((props) => {
       group_by={group_by}
       sub_group_by={sub_group_by}
       sub_group_id={sub_group_id}
-      isDragDisabled={!issueKanBanView?.canUserDragDrop}
+      isDragDisabled={!issueKanBanView?.getCanUserDragDrop(group_by, sub_group_by)}
       handleIssues={handleIssues}
       quickActions={quickActions}
       kanbanFilters={kanbanFilters}
@@ -208,7 +208,7 @@ export const KanBan: React.FC<IKanBan> = observer((props) => {
       quickAddCallback={quickAddCallback}
       viewId={viewId}
       disableIssueCreation={disableIssueCreation}
-      currentStore={currentStore}
+      storeType={storeType}
       addIssuesToView={addIssuesToView}
       canEditProperties={canEditProperties}
     />

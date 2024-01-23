@@ -41,15 +41,19 @@ from plane.app.serializers import (
     ProjectMemberSerializer,
     WorkspaceThemeSerializer,
     IssueActivitySerializer,
-    IssueLiteSerializer,
+    IssueSerializer,
     WorkspaceMemberAdminSerializer,
     WorkspaceMemberMeSerializer,
     ProjectMemberRoleSerializer,
     WorkspaceUserPropertiesSerializer,
+    WorkspaceEstimateSerializer,
+    StateSerializer,
+    LabelSerializer,
 )
 from plane.app.views.base import BaseAPIView
 from . import BaseViewSet
 from plane.db.models import (
+    State,
     User,
     Workspace,
     WorkspaceMemberInvite,
@@ -67,6 +71,8 @@ from plane.db.models import (
     CycleIssue,
     IssueReaction,
     WorkspaceUserProperties,
+    Estimate,
+    EstimatePoint,
 )
 from plane.app.permissions import (
     WorkSpaceBasePermission,
@@ -1339,23 +1345,10 @@ class WorkspaceUserProfileIssuesEndpoint(BaseAPIView):
                 project__project_projectmember__member=request.user,
             )
             .filter(**filters)
-            .annotate(
-                sub_issues_count=Issue.issue_objects.filter(
-                    parent=OuterRef("id")
-                )
-                .order_by()
-                .annotate(count=Func(F("id"), function="Count"))
-                .values("count")
-            )
-            .select_related("project", "workspace", "state", "parent")
+            .select_related("workspace", "project", "state", "parent")
             .prefetch_related("assignees", "labels")
-            .prefetch_related(
-                Prefetch(
-                    "issue_reactions",
-                    queryset=IssueReaction.objects.select_related("actor"),
-                )
-            )
-            .order_by("-created_at")
+            .annotate(cycle_id=F("issue_cycle__cycle_id"))
+            .annotate(module_id=F("issue_module__module_id"))
             .annotate(
                 link_count=IssueLink.objects.filter(issue=OuterRef("id"))
                 .order_by()
@@ -1370,6 +1363,15 @@ class WorkspaceUserProfileIssuesEndpoint(BaseAPIView):
                 .annotate(count=Func(F("id"), function="Count"))
                 .values("count")
             )
+            .annotate(
+                sub_issues_count=Issue.issue_objects.filter(
+                    parent=OuterRef("id")
+                )
+                .order_by()
+                .annotate(count=Func(F("id"), function="Count"))
+                .values("count")
+            )
+            .order_by("created_at")
         ).distinct()
 
         # Priority Ordering
@@ -1432,7 +1434,7 @@ class WorkspaceUserProfileIssuesEndpoint(BaseAPIView):
         else:
             issue_queryset = issue_queryset.order_by(order_by_param)
 
-        issues = IssueLiteSerializer(
+        issues = IssueSerializer(
             issue_queryset, many=True, fields=fields if fields else None
         ).data
         return Response(issues, status=status.HTTP_200_OK)
@@ -1447,10 +1449,46 @@ class WorkspaceLabelsEndpoint(BaseAPIView):
         labels = Label.objects.filter(
             workspace__slug=slug,
             project__project_projectmember__member=request.user,
-        ).values(
-            "parent", "name", "color", "id", "project_id", "workspace__slug"
         )
-        return Response(labels, status=status.HTTP_200_OK)
+        serializer = LabelSerializer(labels, many=True).data
+        return Response(serializer, status=status.HTTP_200_OK)
+
+
+class WorkspaceStatesEndpoint(BaseAPIView):
+    permission_classes = [
+        WorkspaceEntityPermission,
+    ]
+
+    def get(self, request, slug):
+        states = State.objects.filter(
+            workspace__slug=slug,
+            project__project_projectmember__member=request.user,
+        )
+        serializer = StateSerializer(states, many=True).data
+        return Response(serializer, status=status.HTTP_200_OK)
+
+
+class WorkspaceEstimatesEndpoint(BaseAPIView):
+    permission_classes = [
+        WorkspaceEntityPermission,
+    ]
+
+    def get(self, request, slug):
+        estimate_ids = Project.objects.filter(
+            workspace__slug=slug, estimate__isnull=False
+        ).values_list("estimate_id", flat=True)
+        estimates = Estimate.objects.filter(
+            pk__in=estimate_ids
+        ).prefetch_related(
+            Prefetch(
+                "points",
+                queryset=EstimatePoint.objects.select_related(
+                    "estimate", "workspace", "project"
+                ),
+            )
+        )
+        serializer = WorkspaceEstimateSerializer(estimates, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class WorkspaceUserPropertiesEndpoint(BaseAPIView):

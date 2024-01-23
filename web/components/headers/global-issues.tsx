@@ -12,7 +12,12 @@ import { Breadcrumbs, Button, LayersIcon, PhotoFilterIcon, Tooltip } from "@plan
 // icons
 import { List, PlusIcon, Sheet } from "lucide-react";
 // types
-import { IIssueDisplayFilterOptions, IIssueDisplayProperties, IIssueFilterOptions } from "@plane/types";
+import {
+  IIssueDisplayFilterOptions,
+  IIssueDisplayProperties,
+  IIssueFilterOptions,
+  TStaticViewTypes,
+} from "@plane/types";
 // constants
 import { EIssueFilterType, EIssuesStoreType, ISSUE_DISPLAY_FILTERS_BY_LAYOUT } from "constants/issue";
 import { EUserWorkspaceRoles } from "constants/workspace";
@@ -35,17 +40,17 @@ export const GlobalIssuesHeader: React.FC<Props> = observer((props) => {
   const { workspaceSlug, globalViewId } = router.query;
   // store hooks
   const {
-    issuesFilter: { issueFilters, updateFilters },
+    issuesFilter: { filters, updateFilters },
   } = useIssues(EIssuesStoreType.GLOBAL);
   const {
     membership: { currentWorkspaceRole },
   } = useUser();
-  const {
-    workspace: { workspaceLabels },
-  } = useLabel();
+  const { workspaceLabels } = useLabel();
   const {
     workspace: { workspaceMemberIds },
   } = useMember();
+
+  const issueFilters = globalViewId ? filters[globalViewId.toString()] : undefined;
 
   const handleFiltersUpdate = useCallback(
     (key: keyof IIssueFilterOptions, value: string | string[]) => {

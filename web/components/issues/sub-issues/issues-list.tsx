@@ -34,11 +34,10 @@ export const IssueList: FC<IIssueList> = observer((props) => {
   } = props;
   // hooks
   const {
-    subIssues: { subIssuesByIssueId, subIssueHelpersByIssueId },
+    subIssues: { subIssuesByIssueId },
   } = useIssueDetail();
 
   const subIssueIds = subIssuesByIssueId(parentIssueId);
-  const subIssueHelpers = subIssueHelpersByIssueId(parentIssueId);
 
   return (
     <>
@@ -53,11 +52,11 @@ export const IssueList: FC<IIssueList> = observer((props) => {
                 workspaceSlug={workspaceSlug}
                 projectId={projectId}
                 parentIssueId={parentIssueId}
+                issueId={issueId}
                 spacingLeft={spacingLeft}
                 disabled={disabled}
                 handleIssueCrudState={handleIssueCrudState}
                 subIssueOperations={subIssueOperations}
-                issueId={issueId}
               />
             </>
           ))}

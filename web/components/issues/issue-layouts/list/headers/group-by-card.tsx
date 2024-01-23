@@ -19,12 +19,12 @@ interface IHeaderGroupByCard {
   count: number;
   issuePayload: Partial<TIssue>;
   disableIssueCreation?: boolean;
-  currentStore: TCreateModalStoreTypes;
+  storeType: TCreateModalStoreTypes;
   addIssuesToView?: (issueIds: string[]) => Promise<TIssue>;
 }
 
 export const HeaderGroupByCard = observer(
-  ({ icon, title, count, issuePayload, disableIssueCreation, currentStore, addIssuesToView }: IHeaderGroupByCard) => {
+  ({ icon, title, count, issuePayload, disableIssueCreation, storeType, addIssuesToView }: IHeaderGroupByCard) => {
     const router = useRouter();
     const { workspaceSlug, projectId, moduleId, cycleId } = router.query;
 
@@ -70,7 +70,6 @@ export const HeaderGroupByCard = observer(
           {!disableIssueCreation &&
             (renderExistingIssueModal ? (
               <CustomMenu
-                width="auto"
                 customButton={
                   <span className="flex h-5 w-5 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-sm transition-all hover:bg-custom-background-80">
                     <Plus className="h-3.5 w-3.5" strokeWidth={2} />
@@ -101,7 +100,12 @@ export const HeaderGroupByCard = observer(
               fieldsToShow={["all"]}
             />
           ) : (
-            <CreateUpdateIssueModal isOpen={isOpen} onClose={() => setIsOpen(false)} data={issuePayload} />
+            <CreateUpdateIssueModal
+              isOpen={isOpen}
+              onClose={() => setIsOpen(false)}
+              data={issuePayload}
+              storeType={storeType}
+            />
           )}
 
           {renderExistingIssueModal && (

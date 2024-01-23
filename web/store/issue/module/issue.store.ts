@@ -173,7 +173,8 @@ export class ModuleIssues extends IssueHelperStore implements IModuleIssues {
       if (!moduleId) throw new Error("Module Id is required");
 
       const response = await this.rootIssueStore.projectIssues.createIssue(workspaceSlug, projectId, data);
-      const issueToModule = await this.addIssueToModule(workspaceSlug, projectId, moduleId, [response.id]);
+      await this.addIssueToModule(workspaceSlug, projectId, moduleId, [response.id]);
+
       return response;
     } catch (error) {
       throw error;
@@ -252,17 +253,15 @@ export class ModuleIssues extends IssueHelperStore implements IModuleIssues {
 
   addIssueToModule = async (workspaceSlug: string, projectId: string, moduleId: string, issueIds: string[]) => {
     try {
-      runInAction(() => {
-        update(this.issues, moduleId, (moduleIssueIds) => {
-          if (!moduleIssueIds) return issueIds;
-          else return concat(moduleIssueIds, issueIds);
-        });
-      });
-
-      issueIds.map((issueId) => this.rootStore.issues.updateIssue(issueId, { module_id: moduleId }));
-
       const issueToModule = await this.moduleService.addIssuesToModule(workspaceSlug, projectId, moduleId, {
         issues: issueIds,
+      });
+
+      runInAction(() => {
+        update(this.issues, moduleId, (moduleIssueIds) => {
+          if (!moduleIssueIds) return [...issueIds];
+          else return concat(moduleIssueIds, [...issueIds]);
+        });
       });
 
       return issueToModule;

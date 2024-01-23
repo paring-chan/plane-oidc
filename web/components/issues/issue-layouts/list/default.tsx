@@ -34,7 +34,7 @@ export interface IGroupByList {
     viewId?: string
   ) => Promise<TIssue | undefined>;
   disableIssueCreation?: boolean;
-  currentStore: TCreateModalStoreTypes;
+  storeType: TCreateModalStoreTypes;
   addIssuesToView?: (issueIds: string[]) => Promise<TIssue>;
   viewId?: string;
 }
@@ -53,16 +53,16 @@ const GroupByList: React.FC<IGroupByList> = (props) => {
     quickAddCallback,
     viewId,
     disableIssueCreation,
-    currentStore,
+    storeType,
     addIssuesToView,
   } = props;
   // store hooks
   const member = useMember();
   const project = useProject();
-  const projectLabel = useLabel();
+  const label = useLabel();
   const projectState = useProjectState();
 
-  const list = getGroupByColumns(group_by as GroupByColumnTypes, project, projectLabel, projectState, member, true);
+  const list = getGroupByColumns(group_by as GroupByColumnTypes, project, label, projectState, member, true);
 
   if (!list) return null;
 
@@ -116,7 +116,7 @@ const GroupByList: React.FC<IGroupByList> = (props) => {
                     count={is_list ? issueIds?.length || 0 : issueIds?.[_list.id]?.length || 0}
                     issuePayload={_list.payload}
                     disableIssueCreation={disableIssueCreation || isGroupByCreatedBy}
-                    currentStore={currentStore}
+                    storeType={storeType}
                     addIssuesToView={addIssuesToView}
                   />
                 </div>
@@ -166,7 +166,7 @@ export interface IList {
   ) => Promise<TIssue | undefined>;
   viewId?: string;
   disableIssueCreation?: boolean;
-  currentStore: TCreateModalStoreTypes;
+  storeType: TCreateModalStoreTypes;
   addIssuesToView?: (issueIds: string[]) => Promise<TIssue>;
 }
 
@@ -184,7 +184,7 @@ export const List: React.FC<IList> = (props) => {
     enableIssueQuickAdd,
     canEditProperties,
     disableIssueCreation,
-    currentStore,
+    storeType,
     addIssuesToView,
   } = props;
 
@@ -203,7 +203,7 @@ export const List: React.FC<IList> = (props) => {
         quickAddCallback={quickAddCallback}
         viewId={viewId}
         disableIssueCreation={disableIssueCreation}
-        currentStore={currentStore}
+        storeType={storeType}
         addIssuesToView={addIssuesToView}
       />
     </div>

@@ -1,16 +1,17 @@
 import { Avatar, PriorityIcon, StateGroupIcon } from "@plane/ui";
-import { ISSUE_PRIORITIES, ISSUE_STATE_GROUPS } from "constants/issue";
+import { ISSUE_PRIORITIES } from "constants/issue";
 import { renderEmoji } from "helpers/emoji.helper";
-import { ILabelRootStore } from "store/label";
 import { IMemberRootStore } from "store/member";
 import { IProjectStore } from "store/project/project.store";
 import { IStateStore } from "store/state.store";
 import { GroupByColumnTypes, IGroupByColumn } from "@plane/types";
+import { STATE_GROUPS } from "constants/state";
+import { ILabelStore } from "store/label.store";
 
 export const getGroupByColumns = (
   groupBy: GroupByColumnTypes | null,
   project: IProjectStore,
-  projectLabel: ILabelRootStore,
+  label: ILabelStore,
   projectState: IStateStore,
   member: IMemberRootStore,
   includeNone?: boolean
@@ -25,7 +26,7 @@ export const getGroupByColumns = (
     case "priority":
       return getPriorityColumns();
     case "labels":
-      return getLabelsColumns(projectLabel) as any;
+      return getLabelsColumns(label) as any;
     case "assignees":
       return getAssigneeColumns(member) as any;
     case "created_by":
@@ -71,11 +72,11 @@ const getStateColumns = (projectState: IStateStore): IGroupByColumn[] | undefine
 };
 
 const getStateGroupColumns = () => {
-  const stateGroups = ISSUE_STATE_GROUPS;
+  const stateGroups = STATE_GROUPS;
 
-  return stateGroups.map((stateGroup) => ({
+  return Object.values(stateGroups).map((stateGroup) => ({
     id: stateGroup.key,
-    name: stateGroup.title,
+    name: stateGroup.label,
     icon: (
       <div className="w-3.5 h-3.5 rounded-full">
         <StateGroupIcon stateGroup={stateGroup.key} width="14" height="14" />
@@ -96,10 +97,8 @@ const getPriorityColumns = () => {
   }));
 };
 
-const getLabelsColumns = (projectLabel: ILabelRootStore) => {
-  const {
-    project: { projectLabels },
-  } = projectLabel;
+const getLabelsColumns = (label: ILabelStore) => {
+  const { projectLabels } = label;
 
   if (!projectLabels) return;
 

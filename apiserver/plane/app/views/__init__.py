@@ -49,6 +49,8 @@ from .workspace import (
     WorkspaceLabelsEndpoint,
     WorkspaceProjectMemberEndpoint,
     WorkspaceUserPropertiesEndpoint,
+    WorkspaceStatesEndpoint,
+    WorkspaceEstimatesEndpoint,
 )
 from .state import StateViewSet
 from .view import (
@@ -168,6 +170,7 @@ from .notification import (
     NotificationViewSet,
     UnreadNotificationEndpoint,
     MarkAllReadNotificationViewSet,
+    UserNotificationPreferenceEndpoint,
 )
 
 from .exporter import ExportIssuesEndpoint
@@ -178,4 +181,9 @@ from .webhook import (
     WebhookEndpoint,
     WebhookLogsEndpoint,
     WebhookSecretRegenerateEndpoint,
+)
+
+from .dashboard import (
+    DashboardEndpoint,
+    WidgetsEndpoint
 )

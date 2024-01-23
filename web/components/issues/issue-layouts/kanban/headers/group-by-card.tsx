@@ -25,7 +25,7 @@ interface IHeaderGroupByCard {
   handleKanbanFilters: any;
   issuePayload: Partial<TIssue>;
   disableIssueCreation?: boolean;
-  currentStore?: TCreateModalStoreTypes;
+  storeType?: TCreateModalStoreTypes;
   addIssuesToView?: (issueIds: string[]) => Promise<TIssue>;
 }
 
@@ -40,6 +40,7 @@ export const HeaderGroupByCard: FC<IHeaderGroupByCard> = observer((props) => {
     handleKanbanFilters,
     issuePayload,
     disableIssueCreation,
+    storeType,
     addIssuesToView,
   } = props;
   const verticalAlignPosition = sub_group_by ? false : kanbanFilters?.group_by.includes(column_id);
@@ -83,7 +84,12 @@ export const HeaderGroupByCard: FC<IHeaderGroupByCard> = observer((props) => {
           fieldsToShow={["all"]}
         />
       ) : (
-        <CreateUpdateIssueModal isOpen={isOpen} onClose={() => setIsOpen(false)} data={issuePayload} />
+        <CreateUpdateIssueModal
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          data={issuePayload}
+          storeType={storeType}
+        />
       )}
       {renderExistingIssueModal && (
         <ExistingIssuesListModal
@@ -129,7 +135,6 @@ export const HeaderGroupByCard: FC<IHeaderGroupByCard> = observer((props) => {
         {!disableIssueCreation &&
           (renderExistingIssueModal ? (
             <CustomMenu
-              width="auto"
               customButton={
                 <span className="flex h-[20px] w-[20px] flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-sm transition-all hover:bg-custom-background-80">
                   <Plus height={14} width={14} strokeWidth={2} />

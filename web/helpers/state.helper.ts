@@ -1,5 +1,5 @@
 // types
-import { STATE_GROUP_KEYS } from "constants/project";
+import { STATE_GROUPS } from "constants/state";
 import { IState, IStateResponse } from "@plane/types";
 
 export const orderStateGroups = (unorderedStateGroups: IStateResponse | undefined): IStateResponse | undefined => {
@@ -8,12 +8,12 @@ export const orderStateGroups = (unorderedStateGroups: IStateResponse | undefine
 };
 
 export const sortStates = (states: IState[]) => {
-  if (!states || states.length === 0) return null;
+  if (!states || states.length === 0) return;
 
   return states.sort((stateA, stateB) => {
     if (stateA.group === stateB.group) {
       return stateA.sequence - stateB.sequence;
     }
-    return STATE_GROUP_KEYS.indexOf(stateA.group) - STATE_GROUP_KEYS.indexOf(stateB.group);
+    return Object.keys(STATE_GROUPS).indexOf(stateA.group) - Object.keys(STATE_GROUPS).indexOf(stateB.group);
   });
 };

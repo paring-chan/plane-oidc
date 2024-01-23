@@ -27,9 +27,7 @@ const defaultValues: Partial<IWorkspaceView> = {
 export const WorkspaceViewForm: React.FC<Props> = observer((props) => {
   const { handleFormSubmit, handleClose, data, preLoadedData } = props;
   // store hooks
-  const {
-    workspace: { workspaceLabels },
-  } = useLabel();
+  const { workspaceLabels } = useLabel();
   const {
     workspace: { workspaceMemberIds },
   } = useMember();
@@ -61,12 +59,12 @@ export const WorkspaceViewForm: React.FC<Props> = observer((props) => {
     });
   }, [data, preLoadedData, reset]);
 
-  const selectedFilters = watch("query_data")?.filters;
+  const selectedFilters = watch("filters");
 
   const clearAllFilters = () => {
     if (!selectedFilters) return;
 
-    setValue("query_data.filters", {});
+    setValue("filters", {});
   };
 
   return (
@@ -120,7 +118,7 @@ export const WorkspaceViewForm: React.FC<Props> = observer((props) => {
           <div>
             <Controller
               control={control}
-              name="query_data.filters"
+              name="filters"
               render={({ field: { onChange, value: filters } }) => (
                 <FiltersDropdown title="Filters">
                   <FilterSelection

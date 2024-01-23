@@ -69,7 +69,7 @@ interface ISubGroupSwimlane extends ISubGroupSwimlaneHeader {
   handleKanbanFilters: (toggle: "group_by" | "sub_group_by", value: string) => void;
   isDragStarted?: boolean;
   disableIssueCreation?: boolean;
-  currentStore?: TCreateModalStoreTypes;
+  storeType?: TCreateModalStoreTypes;
   enableQuickIssueCreate: boolean;
   canEditProperties: (projectId: string | undefined) => boolean;
   addIssuesToView?: (issueIds: string[]) => Promise<TIssue>;
@@ -172,7 +172,7 @@ export interface IKanBanSwimLanes {
   showEmptyGroup: boolean;
   isDragStarted?: boolean;
   disableIssueCreation?: boolean;
-  currentStore?: TCreateModalStoreTypes;
+  storeType?: TCreateModalStoreTypes;
   addIssuesToView?: (issueIds: string[]) => Promise<TIssue>;
   enableQuickIssueCreate: boolean;
   quickAddCallback?: (
@@ -208,17 +208,11 @@ export const KanBanSwimLanes: React.FC<IKanBanSwimLanes> = observer((props) => {
 
   const member = useMember();
   const project = useProject();
-  const projectLabel = useLabel();
+  const label = useLabel();
   const projectState = useProjectState();
 
-  const groupByList = getGroupByColumns(group_by as GroupByColumnTypes, project, projectLabel, projectState, member);
-  const subGroupByList = getGroupByColumns(
-    sub_group_by as GroupByColumnTypes,
-    project,
-    projectLabel,
-    projectState,
-    member
-  );
+  const groupByList = getGroupByColumns(group_by as GroupByColumnTypes, project, label, projectState, member);
+  const subGroupByList = getGroupByColumns(sub_group_by as GroupByColumnTypes, project, label, projectState, member);
 
   if (!groupByList || !subGroupByList) return null;
 

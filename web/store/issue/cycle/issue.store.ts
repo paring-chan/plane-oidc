@@ -180,9 +180,9 @@ export class CycleIssues extends IssueHelperStore implements ICycleIssues {
       if (!cycleId) throw new Error("Cycle Id is required");
 
       const response = await this.rootIssueStore.projectIssues.createIssue(workspaceSlug, projectId, data);
-      const issueToCycle = await this.addIssueToCycle(workspaceSlug, projectId, cycleId, [response.id]);
+      await this.addIssueToCycle(workspaceSlug, projectId, cycleId, [response.id]);
 
-      return issueToCycle;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -261,18 +261,17 @@ export class CycleIssues extends IssueHelperStore implements ICycleIssues {
 
   addIssueToCycle = async (workspaceSlug: string, projectId: string, cycleId: string, issueIds: string[]) => {
     try {
-      runInAction(() => {
-        update(this.issues, cycleId, (cycleIssueIds) => {
-          if (!cycleIssueIds) return issueIds;
-          else return concat(cycleIssueIds, issueIds);
-        });
-      });
-
-      issueIds.map((issueId) => this.rootStore.issues.updateIssue(issueId, { cycle_id: cycleId }));
-
       const issueToCycle = await this.issueService.addIssueToCycle(workspaceSlug, projectId, cycleId, {
         issues: issueIds,
       });
+
+      runInAction(() => {
+        update(this.issues, cycleId, (cycleIssueIds) => {
+          if (!cycleIssueIds) return [...issueIds];
+          else return concat(cycleIssueIds, [...issueIds]);
+        });
+      });
+
       return issueToCycle;
     } catch (error) {
       throw error;
