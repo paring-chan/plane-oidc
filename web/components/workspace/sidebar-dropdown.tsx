@@ -54,6 +54,7 @@ export const WorkspaceSidebarDropdown = observer(() => {
   const { workspaceSlug } = router.query;
   // store hooks
   const {
+    config: { envConfig },
     theme: { sidebarCollapsed, toggleSidebar },
     eventTracker: { setTrackElement },
   } = useApplication();
@@ -86,7 +87,8 @@ export const WorkspaceSidebarDropdown = observer(() => {
       .then(() => {
         mutate("CURRENT_USER_DETAILS", null);
         setTheme("system");
-        router.push("/");
+        if (envConfig?.oidc_url_endsession) router.push(envConfig.oidc_url_endsession);
+        else router.push("/");
       })
       .catch(() =>
         setToastAlert({
