@@ -41,7 +41,7 @@ export const ProfileLayoutSidebar = observer(() => {
   // store hooks
   const {
     config: { envConfig },
-    theme: { sidebarCollapsed, toggleSidebar },
+    theme: { sidebarCollapsed, toggleSidebar, toggleMobileSidebar },
   } = useApplication();
   const { currentUser, currentUserSettings, signOut } = useUser();
   const { workspaces } = useWorkspace();
@@ -79,7 +79,7 @@ export const ProfileLayoutSidebar = observer(() => {
 
   const handleItemClick = () => {
     if (window.innerWidth < 768) {
-      toggleSidebar();
+      toggleMobileSidebar();
     }
   };
 
@@ -113,7 +113,7 @@ export const ProfileLayoutSidebar = observer(() => {
       `}
     >
       <div ref={ref} className="flex h-full w-full flex-col gap-y-4">
-        <Link href={`/${redirectWorkspaceSlug}`}>
+        <Link href={`/${redirectWorkspaceSlug}`} onClick={handleItemClick}>
           <div
             className={`flex flex-shrink-0 items-center gap-2 truncate px-4 pt-4 ${sidebarCollapsed ? "justify-center" : ""
               }`}

@@ -17,7 +17,7 @@ export interface IArchivedIssues {
   groupedIssueIds: TGroupedIssues | TSubGroupedIssues | TUnGroupedIssues | undefined;
   // actions
   fetchIssues: (workspaceSlug: string, projectId: string, loadType: TLoader) => Promise<TIssue>;
-  removeIssue: (workspaceSlug: string, projectId: string, issueId: string) => Promise<TIssue>;
+  removeIssue: (workspaceSlug: string, projectId: string, issueId: string) => Promise<void>;
   removeIssueFromArchived: (workspaceSlug: string, projectId: string, issueId: string) => Promise<void>;
   quickAddIssue: undefined;
 }
@@ -67,10 +67,11 @@ export class ArchivedIssues extends IssueHelperStore implements IArchivedIssues 
     const orderBy = displayFilters?.order_by;
     const layout = displayFilters?.layout;
 
-    const archivedIssueIds = this.issues[projectId] ?? [];
+    const archivedIssueIds = this.issues[projectId];
+    if (!archivedIssueIds) return undefined;
 
     const _issues = this.rootIssueStore.issues.getIssuesByIds(archivedIssueIds);
-    if (!_issues) return undefined;
+    if (!_issues) return [];
 
     let issues: TGroupedIssues | TSubGroupedIssues | TUnGroupedIssues | undefined = undefined;
 
@@ -110,15 +111,13 @@ export class ArchivedIssues extends IssueHelperStore implements IArchivedIssues 
 
   removeIssue = async (workspaceSlug: string, projectId: string, issueId: string) => {
     try {
-      const response = await this.rootIssueStore.projectIssues.removeIssue(workspaceSlug, projectId, issueId);
+      await this.rootIssueStore.projectIssues.removeIssue(workspaceSlug, projectId, issueId);
 
       const issueIndex = this.issues[projectId].findIndex((_issueId) => _issueId === issueId);
       if (issueIndex >= 0)
         runInAction(() => {
           this.issues[projectId].splice(issueIndex, 1);
         });
-
-      return response;
     } catch (error) {
       throw error;
     }

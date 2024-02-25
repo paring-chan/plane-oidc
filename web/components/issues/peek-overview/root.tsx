@@ -15,7 +15,6 @@ import { ISSUE_UPDATED, ISSUE_DELETED } from "constants/event-tracker";
 
 interface IIssuePeekOverview {
   is_archived?: boolean;
-  onIssueUpdate?: (issue: Partial<TIssue>) => Promise<void>;
 }
 
 export type TIssuePeekOperations = {
@@ -46,7 +45,7 @@ export type TIssuePeekOperations = {
 };
 
 export const IssuePeekOverview: FC<IIssuePeekOverview> = observer((props) => {
-  const { is_archived = false, onIssueUpdate } = props;
+  const { is_archived = false } = props;
   // hooks
   const { setToastAlert } = useToast();
   // router
@@ -69,20 +68,11 @@ export const IssuePeekOverview: FC<IIssuePeekOverview> = observer((props) => {
   // state
   const [loader, setLoader] = useState(false);
 
-  useEffect(() => {
-    if (peekIssue) {
-      setLoader(true);
-      fetchIssue(peekIssue.workspaceSlug, peekIssue.projectId, peekIssue.issueId).finally(() => {
-        setLoader(false);
-      });
-    }
-  }, [peekIssue, fetchIssue]);
-
   const issueOperations: TIssuePeekOperations = useMemo(
     () => ({
       fetch: async (workspaceSlug: string, projectId: string, issueId: string) => {
         try {
-          await fetchIssue(workspaceSlug, projectId, issueId);
+          await fetchIssue(workspaceSlug, projectId, issueId, is_archived);
         } catch (error) {
           console.error("Error fetching the parent issue");
         }
@@ -96,7 +86,6 @@ export const IssuePeekOverview: FC<IIssuePeekOverview> = observer((props) => {
       ) => {
         try {
           const response = await updateIssue(workspaceSlug, projectId, issueId, data);
-          if (onIssueUpdate) await onIssueUpdate(response);
           if (showToast)
             setToastAlert({
               title: "Issue updated successfully",
@@ -105,7 +94,7 @@ export const IssuePeekOverview: FC<IIssuePeekOverview> = observer((props) => {
             });
           captureIssueEvent({
             eventName: ISSUE_UPDATED,
-            payload: { ...response, state: "SUCCESS", element: "Issue peek-overview" },
+            payload: { ...data, issueId, state: "SUCCESS", element: "Issue peek-overview" },
             updates: {
               changed_property: Object.keys(data).join(","),
               change_details: Object.values(data).join(","),
@@ -155,7 +144,7 @@ export const IssuePeekOverview: FC<IIssuePeekOverview> = observer((props) => {
       },
       addIssueToCycle: async (workspaceSlug: string, projectId: string, cycleId: string, issueIds: string[]) => {
         try {
-          const response = await addIssueToCycle(workspaceSlug, projectId, cycleId, issueIds);
+          await addIssueToCycle(workspaceSlug, projectId, cycleId, issueIds);
           setToastAlert({
             title: "Cycle added to issue successfully",
             type: "success",
@@ -163,7 +152,7 @@ export const IssuePeekOverview: FC<IIssuePeekOverview> = observer((props) => {
           });
           captureIssueEvent({
             eventName: ISSUE_UPDATED,
-            payload: { ...response, state: "SUCCESS", element: "Issue peek-overview" },
+            payload: { ...issueIds, state: "SUCCESS", element: "Issue peek-overview" },
             updates: {
               changed_property: "cycle_id",
               change_details: cycleId,
@@ -323,9 +312,19 @@ export const IssuePeekOverview: FC<IIssuePeekOverview> = observer((props) => {
       removeIssueFromModule,
       removeModulesFromIssue,
       setToastAlert,
-      onIssueUpdate,
+      captureIssueEvent,
+      router.asPath,
     ]
   );
+
+  useEffect(() => {
+    if (peekIssue) {
+      setLoader(true);
+      issueOperations.fetch(peekIssue.workspaceSlug, peekIssue.projectId, peekIssue.issueId).finally(() => {
+        setLoader(false);
+      });
+    }
+  }, [peekIssue, issueOperations]);
 
   if (!peekIssue?.workspaceSlug || !peekIssue?.projectId || !peekIssue?.issueId) return <></>;
 

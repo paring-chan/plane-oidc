@@ -53,7 +53,8 @@ export const IssueCommentCreate: FC<TIssueCommentCreate> = (props) => {
     control,
     formState: { isSubmitting },
     reset,
-  } = useForm<Partial<TIssueComment>>({ defaultValues: { comment_html: "<p></p>" } });
+    watch,
+  } = useForm<Partial<TIssueComment>>({ defaultValues: { comment_html: "" } });
 
   const onSubmit = async (formData: Partial<TIssueComment>) => {
     await activityOperations.createComment(formData).finally(() => {
@@ -81,7 +82,6 @@ export const IssueCommentCreate: FC<TIssueCommentCreate> = (props) => {
             render={({ field: { value, onChange } }) => (
               <LiteTextEditorWithRef
                 onEnterKeyPress={(e) => {
-                  console.log("yo");
                   handleSubmit(onSubmit)(e);
                 }}
                 cancelUploadImage={fileService.cancelUpload}
@@ -89,7 +89,7 @@ export const IssueCommentCreate: FC<TIssueCommentCreate> = (props) => {
                 deleteFile={fileService.getDeleteImageFunction(workspaceId)}
                 restoreFile={fileService.getRestoreImageFunction(workspaceId)}
                 ref={editorRef}
-                value={!value ? "<p></p>" : value}
+                value={value ?? ""}
                 customClassName="p-2"
                 editorContentCustomClassNames="min-h-[35px]"
                 debouncedUpdatesEnabled={false}
@@ -105,7 +105,7 @@ export const IssueCommentCreate: FC<TIssueCommentCreate> = (props) => {
                 }
                 submitButton={
                   <Button
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || watch("comment_html") === ""}
                     variant="primary"
                     type="submit"
                     className="!px-2.5 !py-1.5 !text-xs"

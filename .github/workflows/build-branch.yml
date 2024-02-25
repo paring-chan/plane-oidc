@@ -28,7 +28,7 @@ jobs:
       - id: set_env_variables
         name: Set Environment Variables
         run: |
-          if [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
+          if [ "${{ env.TARGET_BRANCH }}" == "master" ] || [ "${{ github.event_name }}" == "release" ]; then
             echo "BUILDX_DRIVER=docker-container" >> $GITHUB_OUTPUT
             echo "BUILDX_VERSION=latest" >> $GITHUB_OUTPUT
             echo "BUILDX_PLATFORMS=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
@@ -41,7 +41,7 @@ jobs:
           fi
           echo "TARGET_BRANCH=${{ env.TARGET_BRANCH }}" >> $GITHUB_OUTPUT
 
-  branch_build_push_frontend:
+  branch_build_push_frontend_amd64:
     runs-on: ubuntu-20.04
     needs: [branch_build_setup]
     env:
@@ -49,12 +49,65 @@ jobs:
       TARGET_BRANCH: ${{ needs.branch_build_setup.outputs.gh_branch_name }}
       BUILDX_DRIVER: ${{ needs.branch_build_setup.outputs.gh_buildx_driver }}
       BUILDX_VERSION: ${{ needs.branch_build_setup.outputs.gh_buildx_version }}
-      BUILDX_PLATFORMS: ${{ needs.branch_build_setup.outputs.gh_buildx_platforms }}
+      BUILDX_PLATFORMS: "linux/amd64"
       BUILDX_ENDPOINT: ${{ needs.branch_build_setup.outputs.gh_buildx_endpoint }}
     steps:
       - name: Set Frontend Docker Tag
         run: |
-          if [ "${{ env.TARGET_BRANCH }}" == "master" ] && [ "${{ github.event_name }}" == "release" ]; then
+          if [ "${{ github.event_name }}" == "release" ]; then
+            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:latest,${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:${{ github.event.release.tag_name }}
+          elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
+            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:stable
+          else
+            TAG=${{ env.FRONTEND_TAG }}
+          fi
+          echo "FRONTEND_TAG=${TAG}" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: ${{ env.BUILDX_DRIVER }}
+          version: ${{ env.BUILDX_VERSION }}
+          endpoint: ${{ env.BUILDX_ENDPOINT }}
+
+      - name: Check out the repo
+        uses: actions/checkout@v4.1.1
+
+      - name: Build and Push Frontend to Docker Container Registry
+        uses: docker/build-push-action@v5.1.0
+        with:
+          context: .
+          file: ./web/Dockerfile.web
+          platforms: ${{ env.BUILDX_PLATFORMS }}
+          tags: ${{ env.FRONTEND_TAG }}
+          push: true
+        env:
+          DOCKER_BUILDKIT: 1
+          DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  branch_build_push_frontend_arm64:
+    runs-on: self-hosted
+    needs: [branch_build_setup]
+    if: contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64')
+    env:
+      FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:${{ needs.branch_build_setup.outputs.gh_branch_name }}
+      TARGET_BRANCH: ${{ needs.branch_build_setup.outputs.gh_branch_name }}
+      BUILDX_DRIVER: ${{ needs.branch_build_setup.outputs.gh_buildx_driver }}
+      BUILDX_VERSION: ${{ needs.branch_build_setup.outputs.gh_buildx_version }}
+      BUILDX_PLATFORMS: "linux/arm64"
+      BUILDX_ENDPOINT: ${{ needs.branch_build_setup.outputs.gh_buildx_endpoint }}
+    steps:
+      - name: Set Frontend Docker Tag
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:latest,${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:${{ github.event.release.tag_name }}
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:stable
@@ -106,7 +159,7 @@ jobs:
     steps:
       - name: Set Space Docker Tag
         run: |
-          if [ "${{ env.TARGET_BRANCH }}" == "master" ] && [ "${{ github.event_name }}" == "release" ]; then
+          if [ "${{ github.event_name }}" == "release" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-space:latest,${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-space:${{ github.event.release.tag_name }}
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-space:stable
@@ -158,7 +211,7 @@ jobs:
     steps:
       - name: Set Backend Docker Tag
         run: |
-          if [ "${{ env.TARGET_BRANCH }}" == "master" ] && [ "${{ github.event_name }}" == "release" ]; then
+          if [ "${{ github.event_name }}" == "release" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-backend:latest,${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-backend:${{ github.event.release.tag_name }}
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-backend:stable
@@ -211,7 +264,7 @@ jobs:
     steps:
       - name: Set Proxy Docker Tag
         run: |
-          if [ "${{ env.TARGET_BRANCH }}" == "master" ] && [ "${{ github.event_name }}" == "release" ]; then
+          if [ "${{ github.event_name }}" == "release" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-proxy:latest,${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-proxy:${{ github.event.release.tag_name }}
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-proxy:stable

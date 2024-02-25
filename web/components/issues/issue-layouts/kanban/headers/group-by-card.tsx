@@ -59,7 +59,7 @@ export const HeaderGroupByCard: FC<IHeaderGroupByCard> = observer((props) => {
   const { setToastAlert } = useToast();
 
   const renderExistingIssueModal = moduleId || cycleId;
-  const ExistingIssuesListModalPayload = moduleId ? { module: [moduleId.toString()] } : { cycle: true };
+  const ExistingIssuesListModalPayload = moduleId ? { module: moduleId.toString() } : { cycle: true };
 
   const handleAddIssuesToView = async (data: ISearchIssueResponse[]) => {
     if (!workspaceSlug || !projectId) return;
@@ -138,6 +138,7 @@ export const HeaderGroupByCard: FC<IHeaderGroupByCard> = observer((props) => {
                   <Plus height={14} width={14} strokeWidth={2} />
                 </span>
               }
+              placement="bottom-end"
             >
               <CustomMenu.MenuItem
                 onClick={() => {
