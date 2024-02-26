@@ -217,7 +217,7 @@ jobs:
       - name: Set Frontend Docker Tag
         run: |
           if [ "${{ github.event_name }}" == "release" ]; then
-            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:latest,${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:${{ github.event.release.tag_name }}
+            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:stable
           else
@@ -256,8 +256,11 @@ jobs:
       
       - name: Push Frontend to Docker Container Registry
         uses: int128/docker-manifest-create-action@v2
+        if: ${{ github.event_name == 'release' }}
         with:
-          tags: ${{ env.FRONTEND_TAG }}
+          tags: |
+            ${{ env.FRONTEND_TAG }}:latest
+            ${{ env.FRONTEND_TAG }}:${{ github.event.release.tag_name }}
           sources: |
             ${{ env.FRONTEND_TAG_AMD64 }}
             ${{ env.FRONTEND_TAG_ARM64 }}
