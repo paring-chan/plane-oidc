@@ -74,9 +74,8 @@ jobs:
               - nginx/**
 
   branch_build_push_frontend:
-    if: ${{ needs.branch_build_setup.outputs.build_frontend == 'true' || github.event_name == 'release' || needs.branch_build_setup.outputs.gh_branch_name == 'master' }}
+    if: ${{ (needs.branch_build_setup.outputs.build_frontend == 'true' || github.event_name == 'release' || needs.branch_build_setup.outputs.gh_branch_name == 'master') && !contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     runs-on: ubuntu-20.04
-    if: ${{ !contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     needs: [branch_build_setup]
     env:
       FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:${{ needs.branch_build_setup.outputs.gh_branch_name }}
@@ -129,7 +128,7 @@ jobs:
 
   branch_build_frontend_amd64:
     runs-on: ubuntu-20.04
-    if: ${{ contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
+    if: ${{ github.event_name == 'release' && contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     needs: [branch_build_setup]
     env:
       FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-amd64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
@@ -182,7 +181,7 @@ jobs:
 
   branch_build_frontend_arm64:
     runs-on: [self-hosted, linux, ARM64]
-    if: ${{ contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
+    if: ${{ github.event_name == 'release' && contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     needs: [branch_build_setup]
     env:
       FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
@@ -236,7 +235,7 @@ jobs:
   branch_push_frontend:
     runs-on: ubuntu-20.04
     needs: [branch_build_setup, branch_build_frontend_amd64, branch_build_frontend_arm64]
-    if: ${{ contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
+    if: ${{ github.event_name == 'release' && contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     env:
       FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
       FRONTEND_TAG_AMD64: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-amd64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
@@ -250,7 +249,7 @@ jobs:
       - name: Set Frontend Docker Tag
         run: |
           if [ "${{ github.event_name }}" == "release" ]; then
-            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:stable
+            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:latest
           else
@@ -292,7 +291,7 @@ jobs:
         if: ${{ github.event_name == 'release' }}
         with:
           tags: |
-            ${{ env.FRONTEND_TAG }}:latest
+            ${{ env.FRONTEND_TAG }}:stable
             ${{ env.FRONTEND_TAG }}:${{ github.event.release.tag_name }}
           sources: |
             ${{ env.FRONTEND_TAG_AMD64 }}
