@@ -128,7 +128,7 @@ jobs:
 
   branch_build_frontend_amd64:
     runs-on: ubuntu-20.04
-    if: ${{ github.event_name == 'release' && contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
+    if: ${{ contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     needs: [branch_build_setup]
     env:
       FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-amd64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
@@ -181,7 +181,7 @@ jobs:
 
   branch_build_frontend_arm64:
     runs-on: [self-hosted, linux, ARM64]
-    if: ${{ github.event_name == 'release' && contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
+    if: ${{ contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     needs: [branch_build_setup]
     env:
       FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
@@ -235,7 +235,7 @@ jobs:
   branch_push_frontend:
     runs-on: ubuntu-20.04
     needs: [branch_build_setup, branch_build_frontend_amd64, branch_build_frontend_arm64]
-    if: ${{ github.event_name == 'release' && contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
+    if: ${{ contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     env:
       FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
       FRONTEND_TAG_AMD64: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-amd64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
