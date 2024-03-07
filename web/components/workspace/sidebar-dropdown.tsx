@@ -8,7 +8,7 @@ import { mutate } from "swr";
 import { Check, ChevronDown, CircleUserRound, LogOut, Mails, PlusSquare, Settings, UserCircle2 } from "lucide-react";
 import { usePopper } from "react-popper";
 // hooks
-import { useApplication, useEventTracker, useUser, useWorkspace } from "hooks/store";
+import { useApplication, useUser, useWorkspace } from "hooks/store";
 // hooks
 import useToast from "hooks/use-toast";
 // ui
@@ -55,9 +55,8 @@ export const WorkspaceSidebarDropdown = observer(() => {
   // store hooks
   const {
     config: { envConfig },
-    theme: { sidebarCollapsed, toggleMobileSidebar },
+    theme: { sidebarCollapsed, toggleSidebar },
   } = useApplication();
-  const { setTrackElement } = useEventTracker();
   const { currentUser, updateCurrentUser, isUserInstanceAdmin, signOut } = useUser();
   const { currentWorkspace: activeWorkspace, workspaces } = useWorkspace();
   // hooks
@@ -100,7 +99,7 @@ export const WorkspaceSidebarDropdown = observer(() => {
   };
   const handleItemClick = () => {
     if (window.innerWidth < 768) {
-      toggleMobileSidebar();
+      toggleSidebar();
     }
   };
   const workspacesList = Object.values(workspaces ?? {});

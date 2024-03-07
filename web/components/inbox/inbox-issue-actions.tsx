@@ -92,7 +92,7 @@ export const InboxIssueActionsHeader: FC<TInboxIssueActionsHeader> = observer((p
               id: inboxIssueId,
               state: "SUCCESS",
               element: "Inbox page",
-            }
+            },
           });
           router.push({
             pathname: `/${workspaceSlug}/projects/${projectId}/inbox/${inboxId}`,
@@ -131,6 +131,8 @@ export const InboxIssueActionsHeader: FC<TInboxIssueActionsHeader> = observer((p
   const handleInboxIssueNavigation = useCallback(
     (direction: "next" | "prev") => {
       if (!inboxIssues || !inboxIssueId) return;
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement && (activeElement.classList.contains("tiptap") || activeElement.id === "title-input")) return;
       const nextIssueIndex =
         direction === "next"
           ? (currentIssueIndex + 1) % inboxIssues.length
@@ -269,12 +271,17 @@ export const InboxIssueActionsHeader: FC<TInboxIssueActionsHeader> = observer((p
                         <DayPicker
                           selected={date ? new Date(date) : undefined}
                           defaultMonth={date ? new Date(date) : undefined}
-                          onSelect={(date) => { if (!date) return; setDate(date) }}
+                          onSelect={(date) => {
+                            if (!date) return;
+                            setDate(date);
+                          }}
                           mode="single"
                           className="border border-custom-border-200 rounded-md p-3"
-                          disabled={[{
-                            before: tomorrow,
-                          }]}
+                          disabled={[
+                            {
+                              before: tomorrow,
+                            },
+                          ]}
                         />
                         <Button
                           variant="primary"
