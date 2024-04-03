@@ -1,17 +1,18 @@
 import React from "react";
 import { eachDayOfInterval, isValid } from "date-fns";
-// ui
-import { LineGraph } from "components/ui";
-// helpers
-import { getDate, renderFormattedDateWithoutYear } from "helpers/date-time.helper";
-//types
 import { TCompletionChartDistribution } from "@plane/types";
+// ui
+import { LineGraph } from "@/components/ui";
+// helpers
+import { getDate, renderFormattedDateWithoutYear } from "@/helpers/date-time.helper";
+//types
 
 type Props = {
   distribution: TCompletionChartDistribution;
   startDate: string | Date;
   endDate: string | Date;
   totalIssues: number;
+  className?: string;
 };
 
 const styleById = {
@@ -40,7 +41,7 @@ const DashedLine = ({ series, lineGenerator, xScale, yScale }: any) =>
     />
   ));
 
-const ProgressChart: React.FC<Props> = ({ distribution, startDate, endDate, totalIssues }) => {
+const ProgressChart: React.FC<Props> = ({ distribution, startDate, endDate, totalIssues, className = "" }) => {
   const chartData = Object.keys(distribution ?? []).map((key) => ({
     currentDate: renderFormattedDateWithoutYear(key),
     pending: distribution[key],
@@ -73,7 +74,7 @@ const ProgressChart: React.FC<Props> = ({ distribution, startDate, endDate, tota
   };
 
   return (
-    <div className="flex w-full items-center justify-center">
+    <div className={`flex w-full items-center justify-center ${className}`}>
       <LineGraph
         animate
         curve="monotoneX"
