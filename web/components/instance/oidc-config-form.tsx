@@ -1,13 +1,12 @@
 import { FC, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Copy, Eye, EyeOff } from "lucide-react";
-// ui
-import { Button, Input, ToggleSwitch } from "@plane/ui";
 // types
 import { IFormattedInstanceConfiguration } from "@plane/types";
+// ui
+import { Button, Input, ToggleSwitch, TOAST_TYPE, setToast } from "@plane/ui";
 // hooks
 import { useApplication } from "hooks/store";
-import useToast from "hooks/use-toast";
 
 export interface IInstanceOidcConfigForm {
   config: IFormattedInstanceConfiguration;
@@ -33,8 +32,6 @@ export const InstanceOidcConfigForm: FC<IInstanceOidcConfigForm> = (props) => {
   const [showPassword, setShowPassword] = useState(false);
   // store hooks
   const { instance: instanceStore } = useApplication();
-  // toast
-  const { setToastAlert } = useToast();
   // form data
   const {
     handleSubmit,
@@ -59,9 +56,9 @@ export const InstanceOidcConfigForm: FC<IInstanceOidcConfigForm> = (props) => {
     await instanceStore
       .updateInstanceConfigurations(payload)
       .then(() =>
-        setToastAlert({
+        setToast({
           title: "Success",
-          type: "success",
+          type: TOAST_TYPE.SUCCESS,
           message: "OpenID Connect Configuration Settings updated successfully",
         })
       )
@@ -203,9 +200,9 @@ export const InstanceOidcConfigForm: FC<IInstanceOidcConfigForm> = (props) => {
             className="flex items-center justify-between py-2"
             onClick={() => {
               navigator.clipboard.writeText(originURL + "/*");
-              setToastAlert({
+              setToast({
                 message: "The Redirect URL has been successfully copied to your clipboard",
-                type: "success",
+                type: TOAST_TYPE.SUCCESS,
                 title: "Copied to clipboard",
               });
             }}
