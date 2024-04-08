@@ -1,5 +1,5 @@
 // react
-import { useEffect, useState, FC, useCallback } from "react";
+import { useEffect, useState, FC, useCallback, useMemo } from "react";
 // next
 import Image from "next/image";
 import Link from "next/link";
@@ -62,7 +62,19 @@ export const OidcSignInButton: FC<OidcSignInButtonProps> = (props) => {
     [clientId, handleSignInRedirection]
   );
 
-  const oidcRedirect = `${authUrl}?client_id=${clientId}&redirect_uri=${loginCallBackURL}&scope=openid%20profile%20email&response_type=code`;
+  function randomState() {
+    const length = 8;
+    const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let result = "";
+    for (let i = length; i > 0; --i) result += chars[Math.round(Math.random() * (chars.length - 1))];
+    return result;
+  }
+
+  const oidcRedirect = useMemo(
+    () =>
+      `${authUrl}?client_id=${clientId}&redirect_uri=${loginCallBackURL}&scope=openid%20profile%20email&response_type=code&state=${randomState()}`,
+    [authUrl, clientId, loginCallBackURL]
+  );
 
   useEffect(() => {
     if (code && !oidcCode) {

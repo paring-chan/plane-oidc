@@ -195,7 +195,7 @@ jobs:
           if [ "${{ github.event_name }}" == "release" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:stable,${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:${{ github.event.release.tag_name }}
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
-            TAG=${{ secrets.DOCKERHUB_USERNAME }}/plane-frontend:latest
+            TAG=${{ secrets.DOCKERHUB_USERNAME }}/plane-frontend-arm64:latest
           else
             TAG=${{ env.FRONTEND_TAG }}
           fi
@@ -236,7 +236,7 @@ jobs:
     needs: [branch_build_setup, branch_build_frontend_amd64, branch_build_frontend_arm64]
     if: ${{ contains(needs.branch_build_setup.outputs.gh_buildx_platforms, 'linux/arm64') }}
     env:
-      FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
+      FRONTEND_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend:${{ needs.branch_build_setup.outputs.gh_branch_name }}
       FRONTEND_TAG_AMD64: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-amd64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
       FRONTEND_TAG_ARM64: ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:${{ needs.branch_build_setup.outputs.gh_branch_name }}
       TARGET_BRANCH: ${{ needs.branch_build_setup.outputs.gh_branch_name }}
@@ -261,7 +261,7 @@ jobs:
           if [ "${{ github.event_name }}" == "release" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-amd64:${{ github.event.release.tag_name }}
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
-            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-amd64:stable
+            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-amd64:latest
           else
             TAG=${{ env.FRONTEND_TAG_AMD64 }}
           fi
@@ -272,7 +272,7 @@ jobs:
           if [ "${{ github.event_name }}" == "release" ]; then
             TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:${{ github.event.release.tag_name }}
           elif [ "${{ env.TARGET_BRANCH }}" == "master" ]; then
-            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:stable
+            TAG=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_REPO }}/plane-frontend-arm64:latest
           else
             TAG=${{ env.FRONTEND_TAG_ARM64 }}
           fi
@@ -292,6 +292,16 @@ jobs:
           tags: |
             ${{ env.FRONTEND_TAG }}:stable
             ${{ env.FRONTEND_TAG }}:${{ github.event.release.tag_name }}
+          sources: |
+            ${{ env.FRONTEND_TAG_AMD64 }}
+            ${{ env.FRONTEND_TAG_ARM64 }}
+
+      - name: Push Frontend to Docker Container Registry
+        uses: int128/docker-manifest-create-action@v2
+        if: ${{ github.event_name == 'release' }}
+        with:
+          tags: |
+            ${{ env.FRONTEND_TAG }}
           sources: |
             ${{ env.FRONTEND_TAG_AMD64 }}
             ${{ env.FRONTEND_TAG_ARM64 }}
