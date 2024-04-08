@@ -101,45 +101,38 @@ def get_access_token(request_token: str, client_id: str) -> str:
         A string representing the access token issued out by the OIDC Provider
     """
 
-    if not request_token:
-        raise ValueError("The request token has to be supplied!")
+    if not request_token or not client_id:
+        raise ValueError("Both request_token and client_id must be supplied!")
 
-    (ACCESS_TOKEN_URL, CLIENT_SECRET, WEB_URL) = get_configuration_value(
-        [
-            {
-                "key": "OIDC_URL_TOKEN",
-                "default": os.environ.get("OIDC_URL_TOKEN", None),
-            },
-            {
-                "key": "OIDC_CLIENT_SECRET",
-                "default": os.environ.get("OIDC_CLIENT_SECRET", None),
-            },
-            {
-                "key": "WEB_URL",
-                "default": os.environ.get("WEB_URL", None),
-            },
-        ]
-    )
+    (ACCESS_TOKEN_URL, CLIENT_SECRET, WEB_URL) = get_configuration_value([
+        {"key": "OIDC_URL_TOKEN", "default": os.environ.get("OIDC_URL_TOKEN")},
+        {"key": "OIDC_CLIENT_SECRET", "default": os.environ.get("OIDC_CLIENT_SECRET")},
+        {"key": "WEB_URL", "default": os.environ.get("WEB_URL")},
+    ])
 
-    url = f"{ACCESS_TOKEN_URL}"
+    if not all([ACCESS_TOKEN_URL, CLIENT_SECRET, WEB_URL]):
+        raise ValueError("Configuration values for ACCESS_TOKEN_URL, CLIENT_SECRET, or WEB_URL are missing.")
+
+    url = ACCESS_TOKEN_URL
     data = {
         "grant_type": "authorization_code",
         "code": request_token,
-        "redirect_uri": WEB_URL,
+        "redirect_uri": os.path.join(WEB_URL, ''),
     }
     basic_auth = b64encode(f"{client_id}:{CLIENT_SECRET}".encode('utf-8')).decode("ascii")
     headers = {
         "accept": "application/json",
         "content-type": "application/x-www-form-urlencoded",
-        "Authorization": "Basic " + basic_auth,
+        "Authorization": f"Basic {basic_auth}",
     }
 
-    res = requests.post(url, headers=headers, data=data)
+    response = requests.post(url, headers=headers, data=data)
 
-    data = res.json()
-    access_token = data["access_token"]
-
-    return access_token
+    data = response.json()
+    if 'access_token' in data:
+        return data["access_token"]
+    else:
+        raise Exception(f"Failed to obtain access token: {str(data)}")
 
 
 def get_user_data(access_token: str) -> dict:
