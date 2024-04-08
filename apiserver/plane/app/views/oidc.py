@@ -125,7 +125,7 @@ def get_access_token(request_token: str, client_id: str) -> str:
     data = {
         "grant_type": "authorization_code",
         "code": request_token,
-        "redirect_uri": WEB_URL,
+        "redirect_uri": os.path.join(WEB_URL, ''),
     }
     basic_auth = b64encode(f"{client_id}:{CLIENT_SECRET}".encode('utf-8')).decode("ascii")
     headers = {
