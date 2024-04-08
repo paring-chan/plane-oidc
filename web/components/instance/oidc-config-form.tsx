@@ -1,13 +1,12 @@
 import { FC, useState } from "react";
+// hooks
+import { useApplication } from "hooks/store";
 import { Controller, useForm } from "react-hook-form";
 import { Copy, Eye, EyeOff } from "lucide-react";
 // types
 import { IFormattedInstanceConfiguration } from "@plane/types";
 // ui
 import { Button, Input, ToggleSwitch, TOAST_TYPE, setToast } from "@plane/ui";
-// hooks
-import { useApplication } from "hooks/store";
-
 export interface IInstanceOidcConfigForm {
   config: IFormattedInstanceConfiguration;
   updateConfig: (
@@ -199,7 +198,7 @@ export const InstanceOidcConfigForm: FC<IInstanceOidcConfigForm> = (props) => {
             variant="neutral-primary"
             className="flex items-center justify-between py-2"
             onClick={() => {
-              navigator.clipboard.writeText(originURL + "/*");
+              navigator.clipboard.writeText(originURL + "/");
               setToast({
                 message: "The Redirect URL has been successfully copied to your clipboard",
                 type: TOAST_TYPE.SUCCESS,
