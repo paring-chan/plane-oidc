@@ -169,7 +169,7 @@ class Command(BaseCommand):
                     )
                 )
 
-        keys = ["IS_GOOGLE_ENABLED", "IS_GITHUB_ENABLED", "IS_GITLAB_ENABLED"]
+        keys = ["IS_GOOGLE_ENABLED", "IS_GITHUB_ENABLED", "IS_GITLAB_ENABLED", "IS_OIDC_ENABLED"]
         if not InstanceConfiguration.objects.filter(key__in=keys).exists():
             for key in keys:
                 if key == "IS_GOOGLE_ENABLED":
@@ -271,6 +271,58 @@ class Command(BaseCommand):
                         value = "0"
                     InstanceConfiguration.objects.create(
                         key="IS_GITLAB_ENABLED",
+                        value=value,
+                        category="AUTHENTICATION",
+                        is_encrypted=False,
+                    )
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"{key} loaded with value from environment variable."
+                        )
+                    )
+                if key == "IS_OIDC_ENABLED":
+                    OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_URL_AUTHORIZATION, OIDC_URL_TOKEN, OIDC_URL_USERINFO = (
+                        get_configuration_value(
+                            [
+                                {
+                                    "key": "OIDC_CLIENT_ID",
+                                    "default": os.environ.get(
+                                        "OIDC_CLIENT_ID", ""
+                                    ),
+                                },
+                                {
+                                    "key": "OIDC_CLIENT_SECRET",
+                                    "default": os.environ.get(
+                                        "OIDC_CLIENT_SECRET", ""
+                                    ),
+                                },
+                                {
+                                    "key": "OIDC_URL_AUTHORIZATION",
+                                    "default": os.environ.get(
+                                        "OIDC_URL_AUTHORIZATION", ""
+                                    ),
+                                },
+                                {
+                                    "key": "OIDC_URL_TOKEN",
+                                    "default": os.environ.get(
+                                        "OIDC_URL_TOKEN", ""
+                                    ),
+                                },
+                                {
+                                    "key": "OIDC_URL_USERINFO",
+                                    "default": os.environ.get(
+                                        "OIDC_URL_USERINFO", ""
+                                    ),
+                                },
+                            ]
+                        )
+                    )
+                    if bool(OIDC_CLIENT_ID) and bool(OIDC_CLIENT_SECRET) and bool(OIDC_URL_AUTHORIZATION) and bool(OIDC_URL_TOKEN) and bool(OIDC_URL_USERINFO):
+                        value = "1"
+                    else:
+                        value = "0"
+                    InstanceConfiguration.objects.create(
+                        key="IS_OIDC_ENABLED",
                         value=value,
                         category="AUTHENTICATION",
                         is_encrypted=False,
