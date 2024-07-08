@@ -21,6 +21,15 @@ x-app-env: &app-env
     - REDIS_HOST=${REDIS_HOST:-plane-redis}
     - REDIS_PORT=${REDIS_PORT:-6379}
     - REDIS_URL=${REDIS_URL:-redis://plane-redis:6379/}
+    # OIDC SETTINGS - Can be configured through admin panel
+    - OIDC_AUTO=${OIDC_AUTO:-0}
+    - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-""}
+    - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-""}
+    - OIDC_DISCOVERY=${OIDC_DISCOVERY:-""}
+    - OIDC_URL_AUTHORIZATION=${OIDC_URL_AUTHORIZATION:-""}
+    - OIDC_URL_TOKEN=${OIDC_URL_TOKEN:-""}
+    - OIDC_URL_USERINFO=${OIDC_URL_USERINFO:-""}
+    - OIDC_URL_ENDSESSION=${OIDC_URL_ENDSESSION:-""}
     # Application secret
     - SECRET_KEY=${SECRET_KEY:-60gp0byfz2dvffa45cxl20p1scy9xbpf6d8c5y0geejgkyp1b5}
     # DATA STORE SETTINGS
@@ -42,7 +51,7 @@ x-app-env: &app-env
 services:
   web:
     <<: *app-env
-    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab}/plane-frontend:${APP_RELEASE:-stable}
+    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab/plane}/plane-frontend:${APP_RELEASE:-stable}
     platform: ${DOCKER_PLATFORM:-}
     pull_policy: ${PULL_POLICY:-always}
     restart: unless-stopped
@@ -55,7 +64,7 @@ services:
 
   space:
     <<: *app-env
-    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab}/plane-space:${APP_RELEASE:-stable}
+    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab/plane}/plane-space:${APP_RELEASE:-stable}
     platform: ${DOCKER_PLATFORM:-}
     pull_policy: ${PULL_POLICY:-always}
     restart: unless-stopped
@@ -69,7 +78,7 @@ services:
 
   admin:
     <<: *app-env
-    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab}/plane-admin:${APP_RELEASE:-stable}
+    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab/plane}/plane-admin:${APP_RELEASE:-stable}
     platform: ${DOCKER_PLATFORM:-}
     pull_policy: ${PULL_POLICY:-always}
     restart: unless-stopped
@@ -82,7 +91,7 @@ services:
 
   api:
     <<: *app-env
-    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab}/plane-backend:${APP_RELEASE:-stable}
+    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab/plane}/plane-backend:${APP_RELEASE:-stable}
     platform: ${DOCKER_PLATFORM:-}
     pull_policy: ${PULL_POLICY:-always}
     restart: unless-stopped
@@ -97,7 +106,7 @@ services:
 
   worker:
     <<: *app-env
-    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab}/plane-backend:${APP_RELEASE:-stable}
+    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab/plane}/plane-backend:${APP_RELEASE:-stable}
     platform: ${DOCKER_PLATFORM:-}
     pull_policy: ${PULL_POLICY:-always}
     restart: unless-stopped
@@ -111,7 +120,7 @@ services:
 
   beat-worker:
     <<: *app-env
-    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab}/plane-backend:${APP_RELEASE:-stable}
+    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab/plane}/plane-backend:${APP_RELEASE:-stable}
     platform: ${DOCKER_PLATFORM:-}
     pull_policy: ${PULL_POLICY:-always}
     restart: unless-stopped
@@ -125,7 +134,7 @@ services:
 
   migrator:
     <<: *app-env
-    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab}/plane-backend:${APP_RELEASE:-stable}
+    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab/plane}/plane-backend:${APP_RELEASE:-stable}
     platform: ${DOCKER_PLATFORM:-}
     pull_policy: ${PULL_POLICY:-always}
     restart: "no"
@@ -165,7 +174,7 @@ services:
   # Comment this if you already have a reverse proxy running
   proxy:
     <<: *app-env
-    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab}/plane-proxy:${APP_RELEASE:-stable}
+    image: ${DOCKERHUB_USER:-ghcr.io/torbenraab/plane}/plane-proxy:${APP_RELEASE:-stable}
     platform: ${DOCKER_PLATFORM:-}
     pull_policy: ${PULL_POLICY:-always}
     ports:

@@ -7,7 +7,6 @@ from django.core.management.base import BaseCommand, CommandError
 # Module imports
 from plane.license.models import InstanceConfiguration
 
-
 class Command(BaseCommand):
     help = "Configure instance variables"
 
@@ -64,6 +63,48 @@ class Command(BaseCommand):
                 "value": os.environ.get("GITHUB_CLIENT_SECRET"),
                 "category": "GITHUB",
                 "is_encrypted": True,
+            },
+            {
+                "key": "OIDC_AUTO",
+                "value": os.environ.get("OIDC_AUTO", "0"),
+                "category": "OIDC",
+                "is_encrypted": False,
+            },
+            {
+                "key": "OIDC_CLIENT_ID",
+                "value": os.environ.get("OIDC_CLIENT_ID"),
+                "category": "OIDC",
+                "is_encrypted": False,
+            },
+            {
+                "key": "OIDC_CLIENT_SECRET",
+                "value": os.environ.get("OIDC_CLIENT_SECRET"),
+                "category": "OIDC",
+                "is_encrypted": True,
+            }, 
+            {
+                "key": "OIDC_URL_AUTHORIZATION",
+                "value": os.environ.get("OIDC_URL_AUTHORIZATION"),
+                "category": "OIDC",
+                "is_encrypted": False,
+            },
+            {
+                "key": "OIDC_URL_TOKEN",
+                "value": os.environ.get("OIDC_URL_TOKEN"),
+                "category": "OIDC",
+                "is_encrypted": False,
+            },
+            {
+                "key": "OIDC_URL_USERINFO",
+                "value": os.environ.get("OIDC_URL_USERINFO"),
+                "category": "OIDC",
+                "is_encrypted": False,
+            },
+            {
+                "key": "OIDC_URL_ENDSESSION",
+                "value": os.environ.get("OIDC_URL_ENDSESSION"),
+                "category": "OIDC",
+                "is_encrypted": False,
             },
             {
                 "key": "GITLAB_HOST",

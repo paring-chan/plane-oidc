@@ -5,7 +5,7 @@ SCRIPT_DIR=$PWD
 SERVICE_FOLDER=plane-app
 PLANE_INSTALL_DIR=$PWD/$SERVICE_FOLDER
 export APP_RELEASE=$BRANCH
-export DOCKERHUB_USER=ghcr.io/torbenraab
+export DOCKERHUB_USER=ghcr.io/torbenraab/plane
 export PULL_POLICY=always
 USE_GLOBAL_IMAGES=1
 
@@ -399,7 +399,7 @@ CPU_ARCH=$(uname -m)
 if [[ $FORCE_CPU == "amd64" || $CPU_ARCH == "amd64" || $CPU_ARCH == "x86_64" || ( $BRANCH == "master" && ( $CPU_ARCH == "arm64" || $CPU_ARCH == "aarch64" ) ) ]]; 
 then
     USE_GLOBAL_IMAGES=1
-    DOCKERHUB_USER=ghcr.io/torbenraab
+    DOCKERHUB_USER=ghcr.io/torbenraab/plane
     PULL_POLICY=always
 else
     USE_GLOBAL_IMAGES=0
