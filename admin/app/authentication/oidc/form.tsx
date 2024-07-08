@@ -98,7 +98,7 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       label: "EndSession Endpoint",
       description: (
         <>
-          Example: https://idp.your-company.com/o/revoke/. This is the URL where we will revoke the user's session.
+          Example: https://idp.your-company.com/o/revoke/. This is the URL where we will revoke the users session.
         </>
       ),
       placeholder: "https://idp.your-company.com/o/revoke/",

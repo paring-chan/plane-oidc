@@ -2,6 +2,7 @@
 import os
 from datetime import datetime
 from urllib.parse import urlencode
+from base64 import b64encode
 
 import pytz
 import requests
