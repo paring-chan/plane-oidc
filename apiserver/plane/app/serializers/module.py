@@ -11,7 +11,6 @@ from plane.db.models import (
     ModuleMember,
     ModuleIssue,
     ModuleLink,
-    ModuleFavorite,
     ModuleUserProperties,
 )
 
@@ -178,6 +177,8 @@ class ModuleSerializer(DynamicBaseSerializer):
     started_issues = serializers.IntegerField(read_only=True)
     unstarted_issues = serializers.IntegerField(read_only=True)
     backlog_issues = serializers.IntegerField(read_only=True)
+    total_estimate_points = serializers.FloatField(read_only=True)
+    completed_estimate_points = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Module
@@ -200,7 +201,10 @@ class ModuleSerializer(DynamicBaseSerializer):
             "sort_order",
             "external_source",
             "external_id",
+            "logo_props",
             # computed fields
+            "total_estimate_points",
+            "completed_estimate_points",
             "is_favorite",
             "total_issues",
             "cancelled_issues",
@@ -218,22 +222,13 @@ class ModuleSerializer(DynamicBaseSerializer):
 class ModuleDetailSerializer(ModuleSerializer):
     link_module = ModuleLinkSerializer(read_only=True, many=True)
     sub_issues = serializers.IntegerField(read_only=True)
+    backlog_estimate_points = serializers.FloatField(read_only=True)
+    unstarted_estimate_points = serializers.FloatField(read_only=True)
+    started_estimate_points = serializers.FloatField(read_only=True)
+    cancelled_estimate_points = serializers.FloatField(read_only=True)
 
     class Meta(ModuleSerializer.Meta):
-        fields = ModuleSerializer.Meta.fields + ["link_module", "sub_issues"]
-
-
-class ModuleFavoriteSerializer(BaseSerializer):
-    module_detail = ModuleFlatSerializer(source="module", read_only=True)
-
-    class Meta:
-        model = ModuleFavorite
-        fields = "__all__"
-        read_only_fields = [
-            "workspace",
-            "project",
-            "user",
-        ]
+        fields = ModuleSerializer.Meta.fields + ["link_module", "sub_issues", "backlog_estimate_points", "unstarted_estimate_points", "started_estimate_points", "cancelled_estimate_points"]
 
 
 class ModuleUserPropertiesSerializer(BaseSerializer):

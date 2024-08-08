@@ -28,9 +28,11 @@ from plane.db.models import (
     Project,
     State,
     User,
+    EstimatePoint,
 )
 from plane.settings.redis import redis_instance
 from plane.utils.exception_logger import log_exception
+from plane.bgtasks.webhook_task import webhook_activity
 
 
 # Track Changes in name
@@ -447,21 +449,37 @@ def track_estimate_points(
     if current_instance.get("estimate_point") != requested_data.get(
         "estimate_point"
     ):
+        old_estimate = (
+            EstimatePoint.objects.filter(
+                pk=current_instance.get("estimate_point")
+            ).first()
+            if current_instance.get("estimate_point") is not None
+            else None
+        )
+        new_estimate = (
+            EstimatePoint.objects.filter(
+                pk=requested_data.get("estimate_point")
+            ).first()
+            if requested_data.get("estimate_point") is not None
+            else None
+        )
         issue_activities.append(
             IssueActivity(
                 issue_id=issue_id,
                 actor_id=actor_id,
                 verb="updated",
-                old_value=(
+                old_identifier=(
                     current_instance.get("estimate_point")
                     if current_instance.get("estimate_point") is not None
-                    else ""
+                    else None
                 ),
-                new_value=(
+                new_identifier=(
                     requested_data.get("estimate_point")
                     if requested_data.get("estimate_point") is not None
-                    else ""
+                    else None
                 ),
+                old_value=old_estimate.value if old_estimate else None,
+                new_value=new_estimate.value if new_estimate else None,
                 field="estimate_point",
                 project_id=project_id,
                 workspace_id=workspace_id,
@@ -1296,7 +1314,7 @@ def create_issue_vote_activity(
             IssueActivity(
                 issue_id=issue_id,
                 actor_id=actor_id,
-                verb="created",
+                verb="updated",
                 old_value=None,
                 new_value=requested_data.get("vote"),
                 field="vote",
@@ -1365,7 +1383,7 @@ def create_issue_relation_activity(
                 IssueActivity(
                     issue_id=issue_id,
                     actor_id=actor_id,
-                    verb="created",
+                    verb="updated",
                     old_value="",
                     new_value=f"{issue.project.identifier}-{issue.sequence_id}",
                     field=requested_data.get("relation_type"),
@@ -1380,7 +1398,7 @@ def create_issue_relation_activity(
                 IssueActivity(
                     issue_id=related_issue,
                     actor_id=actor_id,
-                    verb="created",
+                    verb="updated",
                     old_value="",
                     new_value=f"{issue.project.identifier}-{issue.sequence_id}",
                     field=(
@@ -1606,6 +1624,7 @@ def issue_activity(
     subscriber=True,
     notification=False,
     origin=None,
+    inbox=None,
 ):
     try:
         issue_activities = []
@@ -1691,6 +1710,41 @@ def issue_activity(
                         )
             except Exception as e:
                 log_exception(e)
+
+            for activity in issue_activities_created:
+                webhook_activity.delay(
+                    event=(
+                        "issue_comment"
+                        if activity.field == "comment"
+                        else "inbox_issue" if inbox else "issue"
+                    ),
+                    event_id=(
+                        activity.issue_comment_id
+                        if activity.field == "comment"
+                        else inbox if inbox else activity.issue_id
+                    ),
+                    verb=activity.verb,
+                    field=(
+                        "description"
+                        if activity.field == "comment"
+                        else activity.field
+                    ),
+                    old_value=(
+                        activity.old_value
+                        if activity.old_value != ""
+                        else None
+                    ),
+                    new_value=(
+                        activity.new_value
+                        if activity.new_value != ""
+                        else None
+                    ),
+                    actor_id=activity.actor_id,
+                    current_site=origin,
+                    slug=activity.workspace.slug,
+                    old_identifier=activity.old_identifier,
+                    new_identifier=activity.new_identifier,
+                )
 
         if notification:
             notifications.delay(

@@ -1,6 +1,7 @@
 # Python imports
 import json
 
+# Django Imports
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import (
@@ -15,23 +16,24 @@ from django.db.models import (
     Subquery,
     UUIDField,
     Value,
+    Sum,
+    FloatField,
 )
-from django.db.models.functions import Coalesce
-
-# Django Imports
+from django.db.models.functions import Coalesce, Cast
+from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
-from rest_framework import status
 
 # Third party imports
+from rest_framework import status
 from rest_framework.response import Response
 
+# Module imports
 from plane.app.permissions import (
     ProjectEntityPermission,
     ProjectLitePermission,
 )
 from plane.app.serializers import (
     ModuleDetailSerializer,
-    ModuleFavoriteSerializer,
     ModuleLinkSerializer,
     ModuleSerializer,
     ModuleUserPropertiesSerializer,
@@ -41,7 +43,7 @@ from plane.bgtasks.issue_activites_task import issue_activity
 from plane.db.models import (
     Issue,
     Module,
-    ModuleFavorite,
+    UserFavorite,
     ModuleIssue,
     ModuleLink,
     ModuleUserProperties,
@@ -49,13 +51,11 @@ from plane.db.models import (
 )
 from plane.utils.analytics_plot import burndown_plot
 from plane.utils.user_timezone_converter import user_timezone_converter
+from plane.bgtasks.webhook_task import model_activity
+from .. import BaseAPIView, BaseViewSet
 
 
-# Module imports
-from .. import BaseAPIView, BaseViewSet, WebhookMixin
-
-
-class ModuleViewSet(WebhookMixin, BaseViewSet):
+class ModuleViewSet(BaseViewSet):
     model = Module
     permission_classes = [
         ProjectEntityPermission,
@@ -70,9 +70,10 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
         )
 
     def get_queryset(self):
-        favorite_subquery = ModuleFavorite.objects.filter(
+        favorite_subquery = UserFavorite.objects.filter(
             user=self.request.user,
-            module_id=OuterRef("pk"),
+            entity_type="module",
+            entity_identifier=OuterRef("pk"),
             project_id=self.kwargs.get("project_id"),
             workspace__slug=self.kwargs.get("slug"),
         )
@@ -129,6 +130,90 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
             .annotate(cnt=Count("pk"))
             .values("cnt")
         )
+        completed_estimate_point = (
+            Issue.issue_objects.filter(
+                estimate_point__estimate__type="points",
+                state__group="completed",
+                issue_module__module_id=OuterRef("pk"),
+            )
+            .values("issue_module__module_id")
+            .annotate(
+                completed_estimate_points=Sum(
+                    Cast("estimate_point__value", FloatField())
+                )
+            )
+            .values("completed_estimate_points")[:1]
+        )
+
+        total_estimate_point = (
+            Issue.issue_objects.filter(
+                estimate_point__estimate__type="points",
+                issue_module__module_id=OuterRef("pk"),
+            )
+            .values("issue_module__module_id")
+            .annotate(
+                total_estimate_points=Sum(
+                    Cast("estimate_point__value", FloatField())
+                )
+            )
+            .values("total_estimate_points")[:1]
+        )
+        backlog_estimate_point = (
+            Issue.issue_objects.filter(
+                estimate_point__estimate__type="points",
+                state__group="backlog",
+                issue_module__module_id=OuterRef("pk"),
+            )
+            .values("issue_module__module_id")
+            .annotate(
+                backlog_estimate_point=Sum(
+                    Cast("estimate_point__value", FloatField())
+                )
+            )
+            .values("backlog_estimate_point")[:1]
+        )
+        unstarted_estimate_point = (
+            Issue.issue_objects.filter(
+                estimate_point__estimate__type="points",
+                state__group="unstarted",
+                issue_module__module_id=OuterRef("pk"),
+            )
+            .values("issue_module__module_id")
+            .annotate(
+                unstarted_estimate_point=Sum(
+                    Cast("estimate_point__value", FloatField())
+                )
+            )
+            .values("unstarted_estimate_point")[:1]
+        )
+        started_estimate_point = (
+            Issue.issue_objects.filter(
+                estimate_point__estimate__type="points",
+                state__group="started",
+                issue_module__module_id=OuterRef("pk"),
+            )
+            .values("issue_module__module_id")
+            .annotate(
+                started_estimate_point=Sum(
+                    Cast("estimate_point__value", FloatField())
+                )
+            )
+            .values("started_estimate_point")[:1]
+        )
+        cancelled_estimate_point = (
+            Issue.issue_objects.filter(
+                estimate_point__estimate__type="points",
+                state__group="cancelled",
+                issue_module__module_id=OuterRef("pk"),
+            )
+            .values("issue_module__module_id")
+            .annotate(
+                cancelled_estimate_point=Sum(
+                    Cast("estimate_point__value", FloatField())
+                )
+            )
+            .values("cancelled_estimate_point")[:1]
+        )
         return (
             super()
             .get_queryset()
@@ -184,6 +269,42 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
                 )
             )
             .annotate(
+                backlog_estimate_points=Coalesce(
+                    Subquery(backlog_estimate_point),
+                    Value(0, output_field=FloatField()),
+                ),
+            )
+            .annotate(
+                unstarted_estimate_points=Coalesce(
+                    Subquery(unstarted_estimate_point),
+                    Value(0, output_field=FloatField()),
+                ),
+            )
+            .annotate(
+                started_estimate_points=Coalesce(
+                    Subquery(started_estimate_point),
+                    Value(0, output_field=FloatField()),
+                ),
+            )
+            .annotate(
+                cancelled_estimate_points=Coalesce(
+                    Subquery(cancelled_estimate_point),
+                    Value(0, output_field=FloatField()),
+                ),
+            )
+            .annotate(
+                completed_estimate_points=Coalesce(
+                    Subquery(completed_estimate_point),
+                    Value(0, output_field=FloatField()),
+                ),
+            )
+            .annotate(
+                total_estimate_points=Coalesce(
+                    Subquery(total_estimate_point),
+                    Value(0, output_field=FloatField()),
+                ),
+            )
+            .annotate(
                 member_ids=Coalesce(
                     ArrayAgg(
                         "members__id",
@@ -226,6 +347,7 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
                     "sort_order",
                     "external_source",
                     "external_id",
+                    "logo_props",
                     # computed fields
                     "is_favorite",
                     "cancelled_issues",
@@ -233,11 +355,23 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
                     "total_issues",
                     "started_issues",
                     "unstarted_issues",
+                    "completed_estimate_points",
+                    "total_estimate_points",
                     "backlog_issues",
                     "created_at",
                     "updated_at",
                 )
             ).first()
+            # Send the model activity
+            model_activity.delay(
+                model_name="module",
+                model_id=str(module["id"]),
+                requested_data=request.data,
+                current_instance=None,
+                actor_id=request.user.id,
+                slug=slug,
+                origin=request.META.get("HTTP_ORIGIN"),
+            )
             datetime_fields = ["created_at", "updated_at"]
             module = user_timezone_converter(
                 module, datetime_fields, request.user.user_timezone
@@ -272,7 +406,10 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
                 "sort_order",
                 "external_source",
                 "external_id",
+                "logo_props",
                 # computed fields
+                "completed_estimate_points",
+                "total_estimate_points",
                 "total_issues",
                 "is_favorite",
                 "cancelled_issues",
@@ -306,6 +443,116 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
             )
         )
 
+        estimate_type = Project.objects.filter(
+            workspace__slug=slug,
+            pk=project_id,
+            estimate__isnull=False,
+            estimate__type="points",
+        ).exists()
+
+        data = ModuleDetailSerializer(queryset.first()).data
+        modules = queryset.first()
+
+        data["estimate_distribution"] = {}
+
+        if estimate_type:
+            assignee_distribution = (
+                Issue.issue_objects.filter(
+                    issue_module__module_id=pk,
+                    workspace__slug=slug,
+                    project_id=project_id,
+                )
+                .annotate(first_name=F("assignees__first_name"))
+                .annotate(last_name=F("assignees__last_name"))
+                .annotate(assignee_id=F("assignees__id"))
+                .annotate(display_name=F("assignees__display_name"))
+                .annotate(avatar=F("assignees__avatar"))
+                .values(
+                    "first_name",
+                    "last_name",
+                    "assignee_id",
+                    "avatar",
+                    "display_name",
+                )
+                .annotate(
+                    total_estimates=Sum(
+                        Cast("estimate_point__value", FloatField())
+                    ),
+                )
+                .annotate(
+                    completed_estimates=Sum(
+                        Cast("estimate_point__value", FloatField()),
+                        filter=Q(
+                            completed_at__isnull=False,
+                            archived_at__isnull=True,
+                            is_draft=False,
+                        ),
+                    )
+                )
+                .annotate(
+                    pending_estimates=Sum(
+                        Cast("estimate_point__value", FloatField()),
+                        filter=Q(
+                            completed_at__isnull=True,
+                            archived_at__isnull=True,
+                            is_draft=False,
+                        ),
+                    )
+                )
+                .order_by("first_name", "last_name")
+            )
+
+            label_distribution = (
+                Issue.issue_objects.filter(
+                    issue_module__module_id=pk,
+                    workspace__slug=slug,
+                    project_id=project_id,
+                )
+                .annotate(label_name=F("labels__name"))
+                .annotate(color=F("labels__color"))
+                .annotate(label_id=F("labels__id"))
+                .values("label_name", "color", "label_id")
+                .annotate(
+                    total_estimates=Sum(
+                        Cast("estimate_point__value", FloatField())
+                    ),
+                )
+                .annotate(
+                    completed_estimates=Sum(
+                        Cast("estimate_point__value", FloatField()),
+                        filter=Q(
+                            completed_at__isnull=False,
+                            archived_at__isnull=True,
+                            is_draft=False,
+                        ),
+                    )
+                )
+                .annotate(
+                    pending_estimates=Sum(
+                        Cast("estimate_point__value", FloatField()),
+                        filter=Q(
+                            completed_at__isnull=True,
+                            archived_at__isnull=True,
+                            is_draft=False,
+                        ),
+                    )
+                )
+                .order_by("label_name")
+            )
+            data["estimate_distribution"]["assignees"] = assignee_distribution
+            data["estimate_distribution"]["labels"] = label_distribution
+
+            if modules and modules.start_date and modules.target_date:
+                data["estimate_distribution"]["completion_chart"] = (
+                    burndown_plot(
+                        queryset=modules,
+                        slug=slug,
+                        project_id=project_id,
+                        plot_type="points",
+                        module_id=pk,
+                    )
+                )
+
         assignee_distribution = (
             Issue.objects.filter(
                 issue_module__module_id=pk,
@@ -331,7 +578,7 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
                         archived_at__isnull=True,
                         is_draft=False,
                     ),
-                )
+                ),
             )
             .annotate(
                 completed_issues=Count(
@@ -398,20 +645,17 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
             .order_by("label_name")
         )
 
-        data = ModuleDetailSerializer(queryset.first()).data
         data["distribution"] = {
             "assignees": assignee_distribution,
             "labels": label_distribution,
             "completion_chart": {},
         }
-
-        # Fetch the modules
-        modules = queryset.first()
         if modules and modules.start_date and modules.target_date:
             data["distribution"]["completion_chart"] = burndown_plot(
                 queryset=modules,
                 slug=slug,
                 project_id=project_id,
+                plot_type="issues",
                 module_id=pk,
             )
 
@@ -428,6 +672,9 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
                 {"error": "Archived module cannot be updated"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        current_instance = json.dumps(
+            ModuleSerializer(module.first()).data, cls=DjangoJSONEncoder
+        )
         serializer = ModuleWriteSerializer(
             module.first(), data=request.data, partial=True
         )
@@ -453,7 +700,10 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
                 "sort_order",
                 "external_source",
                 "external_id",
+                "logo_props",
                 # computed fields
+                "completed_estimate_points",
+                "total_estimate_points",
                 "is_favorite",
                 "cancelled_issues",
                 "completed_issues",
@@ -464,6 +714,18 @@ class ModuleViewSet(WebhookMixin, BaseViewSet):
                 "created_at",
                 "updated_at",
             ).first()
+
+            # Send the model activity
+            model_activity.delay(
+                model_name="module",
+                model_id=str(module["id"]),
+                requested_data=request.data,
+                current_instance=current_instance,
+                actor_id=request.user.id,
+                slug=slug,
+                origin=request.META.get("HTTP_ORIGIN"),
+            )
+
             datetime_fields = ["created_at", "updated_at"]
             module = user_timezone_converter(
                 module, datetime_fields, request.user.user_timezone
@@ -530,8 +792,7 @@ class ModuleLinkViewSet(BaseViewSet):
 
 
 class ModuleFavoriteViewSet(BaseViewSet):
-    serializer_class = ModuleFavoriteSerializer
-    model = ModuleFavorite
+    model = UserFavorite
 
     def get_queryset(self):
         return self.filter_queryset(
@@ -543,18 +804,21 @@ class ModuleFavoriteViewSet(BaseViewSet):
         )
 
     def create(self, request, slug, project_id):
-        serializer = ModuleFavoriteSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=request.user, project_id=project_id)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        _ = UserFavorite.objects.create(
+            project_id=project_id,
+            user=request.user,
+            entity_type="module",
+            entity_identifier=request.data.get("module"),
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def destroy(self, request, slug, project_id, module_id):
-        module_favorite = ModuleFavorite.objects.get(
-            project=project_id,
+        module_favorite = UserFavorite.objects.get(
+            project_id=project_id,
             user=request.user,
             workspace__slug=slug,
-            module_id=module_id,
+            entity_type="module",
+            entity_identifier=module_id,
         )
         module_favorite.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

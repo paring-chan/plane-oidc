@@ -2,15 +2,15 @@
 from uuid import uuid4
 
 # Django imports
-from django.db import models
 from django.conf import settings
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
 
 # Modeule imports
 from plane.db.mixins import AuditModel
 
 # Module imports
-from . import BaseModel
+from .base import BaseModel
 
 ROLE_CHOICES = (
     (20, "Admin"),
@@ -260,6 +260,8 @@ def get_default_views():
     }
 
 
+# DEPRECATED TODO:
+# used to get the old anchors for the project deploy boards
 class ProjectDeployBoard(ProjectBaseModel):
     anchor = models.CharField(
         max_length=255, default=get_anchor, unique=True, db_index=True

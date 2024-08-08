@@ -2,18 +2,23 @@
 import os
 
 # Django imports
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 # Module imports
 from plane.license.models import InstanceConfiguration
-from plane.app.views.oidc import get_endpoint_information
-
 
 class Command(BaseCommand):
     help = "Configure instance variables"
 
     def handle(self, *args, **options):
         from plane.license.utils.encryption import encrypt_data
+        from plane.license.utils.instance_value import get_configuration_value
+
+        mandatory_keys = ["SECRET_KEY"]
+
+        for item in mandatory_keys:
+            if not os.environ.get(item):
+                raise CommandError(f"{item} env variable is required.")
 
         config_keys = [
             # Authentication Settings
@@ -42,6 +47,12 @@ class Command(BaseCommand):
                 "is_encrypted": False,
             },
             {
+                "key": "GOOGLE_CLIENT_SECRET",
+                "value": os.environ.get("GOOGLE_CLIENT_SECRET"),
+                "category": "GOOGLE",
+                "is_encrypted": True,
+            },
+            {
                 "key": "GITHUB_CLIENT_ID",
                 "value": os.environ.get("GITHUB_CLIENT_ID"),
                 "category": "GITHUB",
@@ -53,16 +64,9 @@ class Command(BaseCommand):
                 "category": "GITHUB",
                 "is_encrypted": True,
             },
-            # OIDC Block START - Don't change the order!!!
             {
                 "key": "OIDC_AUTO",
                 "value": os.environ.get("OIDC_AUTO", "0"),
-                "category": "OIDC",
-                "is_encrypted": False,
-            },
-            {
-                "key": "OIDC_DISCOVERY",
-                "value": os.environ.get("OIDC_DISCOVERY"),
                 "category": "OIDC",
                 "is_encrypted": False,
             },
@@ -102,7 +106,24 @@ class Command(BaseCommand):
                 "category": "OIDC",
                 "is_encrypted": False,
             },
-            # OIDC Block END - Don't change the order!!!
+            {
+                "key": "GITLAB_HOST",
+                "value": os.environ.get("GITLAB_HOST"),
+                "category": "GITLAB",
+                "is_encrypted": False,
+            },
+            {
+                "key": "GITLAB_CLIENT_ID",
+                "value": os.environ.get("GITLAB_CLIENT_ID"),
+                "category": "GITLAB",
+                "is_encrypted": False,
+            },
+            {
+                "key": "GITLAB_CLIENT_SECRET",
+                "value": os.environ.get("GITLAB_CLIENT_SECRET"),
+                "category": "GITLAB",
+                "is_encrypted": True,
+            },
             {
                 "key": "EMAIL_HOST",
                 "value": os.environ.get("EMAIL_HOST", ""),
@@ -165,22 +186,6 @@ class Command(BaseCommand):
             },
         ]
 
-        # Autodiscovery of Settings for OIDC based on the OIDC_DISCOVERY
-        for item in config_keys:
-            if item.get("key") == "OIDC_DISCOVERY" and item.get("value"):
-                (
-                    OIDC_URL_AUTHORIZATION, 
-                    OIDC_URL_TOKEN, 
-                    OIDC_URL_USERINFO, 
-                    OIDC_URL_ENDSESSION
-                ) = get_endpoint_information(item.get("value"))
-                issuer_index = config_keys.index(item)
-                config_keys[issuer_index + 3]["value"] = OIDC_URL_AUTHORIZATION
-                config_keys[issuer_index + 4]["value"] = OIDC_URL_TOKEN
-                config_keys[issuer_index + 5]["value"] = OIDC_URL_USERINFO
-                config_keys[issuer_index + 6]["value"] = OIDC_URL_ENDSESSION
-                config_keys.pop(issuer_index)
-
         for item in config_keys:
             obj, created = InstanceConfiguration.objects.get_or_create(
                 key=item.get("key")
@@ -203,4 +208,173 @@ class Command(BaseCommand):
                     self.style.WARNING(
                         f"{obj.key} configuration already exists"
                     )
+                )
+
+        keys = ["IS_GOOGLE_ENABLED", "IS_GITHUB_ENABLED", "IS_GITLAB_ENABLED", "IS_OIDC_ENABLED"]
+        if not InstanceConfiguration.objects.filter(key__in=keys).exists():
+            for key in keys:
+                if key == "IS_GOOGLE_ENABLED":
+                    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET = (
+                        get_configuration_value(
+                            [
+                                {
+                                    "key": "GOOGLE_CLIENT_ID",
+                                    "default": os.environ.get(
+                                        "GOOGLE_CLIENT_ID", ""
+                                    ),
+                                },
+                                {
+                                    "key": "GOOGLE_CLIENT_SECRET",
+                                    "default": os.environ.get(
+                                        "GOOGLE_CLIENT_SECRET", "0"
+                                    ),
+                                },
+                            ]
+                        )
+                    )
+                    if bool(GOOGLE_CLIENT_ID) and bool(GOOGLE_CLIENT_SECRET):
+                        value = "1"
+                    else:
+                        value = "0"
+                    InstanceConfiguration.objects.create(
+                        key=key,
+                        value=value,
+                        category="AUTHENTICATION",
+                        is_encrypted=False,
+                    )
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"{key} loaded with value from environment variable."
+                        )
+                    )
+                if key == "IS_GITHUB_ENABLED":
+                    GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET = (
+                        get_configuration_value(
+                            [
+                                {
+                                    "key": "GITHUB_CLIENT_ID",
+                                    "default": os.environ.get(
+                                        "GITHUB_CLIENT_ID", ""
+                                    ),
+                                },
+                                {
+                                    "key": "GITHUB_CLIENT_SECRET",
+                                    "default": os.environ.get(
+                                        "GITHUB_CLIENT_SECRET", "0"
+                                    ),
+                                },
+                            ]
+                        )
+                    )
+                    if bool(GITHUB_CLIENT_ID) and bool(GITHUB_CLIENT_SECRET):
+                        value = "1"
+                    else:
+                        value = "0"
+                    InstanceConfiguration.objects.create(
+                        key="IS_GITHUB_ENABLED",
+                        value=value,
+                        category="AUTHENTICATION",
+                        is_encrypted=False,
+                    )
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"{key} loaded with value from environment variable."
+                        )
+                    )
+                if key == "IS_GITLAB_ENABLED":
+                    GITLAB_HOST, GITLAB_CLIENT_ID, GITLAB_CLIENT_SECRET = (
+                        get_configuration_value(
+                            [
+                                {
+                                    "key": "GITLAB_HOST",
+                                    "default": os.environ.get(
+                                        "GITLAB_HOST", "https://gitlab.com"
+                                    ),
+                                },
+                                {
+                                    "key": "GITLAB_CLIENT_ID",
+                                    "default": os.environ.get(
+                                        "GITLAB_CLIENT_ID", ""
+                                    ),
+                                },
+                                {
+                                    "key": "GITLAB_CLIENT_SECRET",
+                                    "default": os.environ.get(
+                                        "GITLAB_CLIENT_SECRET", ""
+                                    ),
+                                },
+                            ]
+                        )
+                    )
+                    if bool(GITLAB_HOST) and bool(GITLAB_CLIENT_ID) and bool(GITLAB_CLIENT_SECRET):
+                        value = "1"
+                    else:
+                        value = "0"
+                    InstanceConfiguration.objects.create(
+                        key="IS_GITLAB_ENABLED",
+                        value=value,
+                        category="AUTHENTICATION",
+                        is_encrypted=False,
+                    )
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"{key} loaded with value from environment variable."
+                        )
+                    )
+                if key == "IS_OIDC_ENABLED":
+                    OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_URL_AUTHORIZATION, OIDC_URL_TOKEN, OIDC_URL_USERINFO = (
+                        get_configuration_value(
+                            [
+                                {
+                                    "key": "OIDC_CLIENT_ID",
+                                    "default": os.environ.get(
+                                        "OIDC_CLIENT_ID", ""
+                                    ),
+                                },
+                                {
+                                    "key": "OIDC_CLIENT_SECRET",
+                                    "default": os.environ.get(
+                                        "OIDC_CLIENT_SECRET", ""
+                                    ),
+                                },
+                                {
+                                    "key": "OIDC_URL_AUTHORIZATION",
+                                    "default": os.environ.get(
+                                        "OIDC_URL_AUTHORIZATION", ""
+                                    ),
+                                },
+                                {
+                                    "key": "OIDC_URL_TOKEN",
+                                    "default": os.environ.get(
+                                        "OIDC_URL_TOKEN", ""
+                                    ),
+                                },
+                                {
+                                    "key": "OIDC_URL_USERINFO",
+                                    "default": os.environ.get(
+                                        "OIDC_URL_USERINFO", ""
+                                    ),
+                                },
+                            ]
+                        )
+                    )
+                    if bool(OIDC_CLIENT_ID) and bool(OIDC_CLIENT_SECRET) and bool(OIDC_URL_AUTHORIZATION) and bool(OIDC_URL_TOKEN) and bool(OIDC_URL_USERINFO):
+                        value = "1"
+                    else:
+                        value = "0"
+                    InstanceConfiguration.objects.create(
+                        key="IS_OIDC_ENABLED",
+                        value=value,
+                        category="AUTHENTICATION",
+                        is_encrypted=False,
+                    )
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"{key} loaded with value from environment variable."
+                        )
+                    )
+        else:
+            for key in keys:
+                self.stdout.write(
+                    self.style.WARNING(f"{key} configuration already exists")
                 )

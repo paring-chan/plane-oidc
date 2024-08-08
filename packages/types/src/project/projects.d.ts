@@ -6,20 +6,9 @@ import type {
   IUserMemberLite,
   IWorkspace,
   IWorkspaceLite,
+  TLogoProps,
   TStateGroups,
 } from "..";
-
-export type TProjectLogoProps = {
-  in_use: "emoji" | "icon";
-  emoji?: {
-    value?: string;
-    url?: string;
-  };
-  icon?: {
-    name?: string;
-    color?: string;
-  };
-};
 
 export interface IProject {
   archive_in: number;
@@ -43,10 +32,10 @@ export interface IProject {
   estimate: string | null;
   id: string;
   identifier: string;
-  is_deployed: boolean;
+  anchor: string | null;
   is_favorite: boolean;
   is_member: boolean;
-  logo_props: TProjectLogoProps;
+  logo_props: TLogoProps;
   member_role: EUserProjectRoles | null;
   members: IProjectMemberLite[];
   name: string;
@@ -147,6 +136,7 @@ export interface ISearchIssueResponse {
   project__identifier: string;
   project__name: string;
   sequence_id: number;
+  start_date: string | null;
   state__color: string;
   state__group: TStateGroups;
   state__name: string;

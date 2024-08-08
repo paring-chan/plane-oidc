@@ -34,6 +34,7 @@ const CustomMenu = (props: ICustomMenuDropdownProps) => {
     onMenuClose,
     tabIndex,
     closeOnSelect,
+    openOnHover = false,
   } = props;
 
   const [referenceElement, setReferenceElement] = React.useState<HTMLButtonElement | null>(null);
@@ -66,6 +67,25 @@ const CustomMenu = (props: ICustomMenuDropdownProps) => {
 
   const handleOnClick = () => {
     if (closeOnSelect) closeDropdown();
+  };
+
+  const handleMenuButtonClick = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    isOpen ? closeDropdown() : openDropdown();
+    if (menuButtonOnClick) menuButtonOnClick();
+  };
+
+  const handleMouseEnter = () => {
+    if (openOnHover) openDropdown();
+  };
+
+  const handleMouseLeave = () => {
+    if (openOnHover && isOpen) {
+      setTimeout(() => {
+        closeDropdown();
+      }, 500);
+    }
   };
 
   useOutsideClickDetector(dropdownRef, closeDropdown);
@@ -104,6 +124,8 @@ const CustomMenu = (props: ICustomMenuDropdownProps) => {
       className={cn("relative w-min text-left", className)}
       onKeyDownCapture={handleKeyDown}
       onClick={handleOnClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {({ open }) => (
         <>
@@ -112,11 +134,7 @@ const CustomMenu = (props: ICustomMenuDropdownProps) => {
               <button
                 ref={setReferenceElement}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  isOpen ? closeDropdown() : openDropdown();
-                  if (menuButtonOnClick) menuButtonOnClick();
-                }}
+                onClick={handleMenuButtonClick}
                 className={customButtonClassName}
                 tabIndex={customButtonTabIndex}
               >
@@ -130,12 +148,7 @@ const CustomMenu = (props: ICustomMenuDropdownProps) => {
                   <button
                     ref={setReferenceElement}
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      isOpen ? closeDropdown() : openDropdown();
-                      if (menuButtonOnClick) menuButtonOnClick();
-                    }}
+                    onClick={handleMenuButtonClick}
                     disabled={disabled}
                     className={`relative grid place-items-center rounded p-1 text-custom-text-200 outline-none hover:text-custom-text-100 ${
                       disabled ? "cursor-not-allowed" : "cursor-pointer hover:bg-custom-background-80"
@@ -157,12 +170,7 @@ const CustomMenu = (props: ICustomMenuDropdownProps) => {
                         ? "cursor-not-allowed text-custom-text-200"
                         : "cursor-pointer hover:bg-custom-background-80"
                     } ${buttonClassName}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      isOpen ? closeDropdown() : openDropdown();
-                      if (menuButtonOnClick) menuButtonOnClick();
-                    }}
+                    onClick={handleMenuButtonClick}
                     tabIndex={customButtonTabIndex}
                   >
                     {label}

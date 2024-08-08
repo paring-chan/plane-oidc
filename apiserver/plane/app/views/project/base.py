@@ -1,58 +1,58 @@
 # Python imports
 import boto3
+from django.conf import settings
+from django.utils import timezone
+import json
 
 # Django imports
 from django.db import IntegrityError
 from django.db.models import (
-    Prefetch,
-    Q,
     Exists,
-    OuterRef,
     F,
     Func,
+    OuterRef,
+    Prefetch,
+    Q,
     Subquery,
 )
-from django.conf import settings
-from django.utils import timezone
+from django.core.serializers.json import DjangoJSONEncoder
 
 # Third Party imports
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 
 # Module imports
-from plane.app.views.base import BaseViewSet, BaseAPIView, WebhookMixin
+from plane.app.views.base import BaseViewSet, BaseAPIView
 from plane.app.serializers import (
     ProjectSerializer,
     ProjectListSerializer,
-    ProjectFavoriteSerializer,
-    ProjectDeployBoardSerializer,
+    DeployBoardSerializer,
 )
 
 from plane.app.permissions import (
     ProjectBasePermission,
     ProjectMemberPermission,
 )
-
 from plane.db.models import (
-    Project,
-    ProjectMember,
-    Workspace,
-    State,
-    ProjectFavorite,
-    ProjectIdentifier,
-    Module,
+    UserFavorite,
     Cycle,
     Inbox,
-    ProjectDeployBoard,
+    DeployBoard,
     IssueProperty,
     Issue,
+    Module,
+    Project,
+    ProjectIdentifier,
+    ProjectMember,
+    State,
+    Workspace,
 )
 from plane.utils.cache import cache_response
+from plane.bgtasks.webhook_task import model_activity
 
 
-class ProjectViewSet(WebhookMixin, BaseViewSet):
+class ProjectViewSet(BaseViewSet):
     serializer_class = ProjectListSerializer
     model = Project
     webhook_event = "project"
@@ -87,10 +87,11 @@ class ProjectViewSet(WebhookMixin, BaseViewSet):
             )
             .annotate(
                 is_favorite=Exists(
-                    ProjectFavorite.objects.filter(
+                    UserFavorite.objects.filter(
                         user=self.request.user,
+                        entity_identifier=OuterRef("pk"),
+                        entity_type="project",
                         project_id=OuterRef("pk"),
-                        workspace__slug=self.kwargs.get("slug"),
                     )
                 )
             )
@@ -134,12 +135,11 @@ class ProjectViewSet(WebhookMixin, BaseViewSet):
                 ).values("role")
             )
             .annotate(
-                is_deployed=Exists(
-                    ProjectDeployBoard.objects.filter(
-                        project_id=OuterRef("pk"),
-                        workspace__slug=self.kwargs.get("slug"),
-                    )
-                )
+                anchor=DeployBoard.objects.filter(
+                    entity_name="project",
+                    entity_identifier=OuterRef("pk"),
+                    workspace__slug=self.kwargs.get("slug"),
+                ).values("anchor")
             )
             .annotate(sort_order=Subquery(sort_order))
             .prefetch_related(
@@ -166,6 +166,7 @@ class ProjectViewSet(WebhookMixin, BaseViewSet):
             "cursor", False
         ):
             return self.paginate(
+                order_by=request.GET.get("order_by", "-created_at"),
                 request=request,
                 queryset=(projects),
                 on_results=lambda projects: ProjectListSerializer(
@@ -238,6 +239,12 @@ class ProjectViewSet(WebhookMixin, BaseViewSet):
                 .values("count")
             )
         ).first()
+
+        if project is None:
+            return Response(
+                {"error": "Project does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         serializer = ProjectListSerializer(project)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -334,6 +341,17 @@ class ProjectViewSet(WebhookMixin, BaseViewSet):
                     .filter(pk=serializer.data["id"])
                     .first()
                 )
+
+                model_activity.delay(
+                    model_name="project",
+                    model_id=str(project.id),
+                    requested_data=request.data,
+                    current_instance=None,
+                    actor_id=request.user.id,
+                    slug=slug,
+                    origin=request.META.get("HTTP_ORIGIN"),
+                )
+
                 serializer = ProjectListSerializer(project)
                 return Response(
                     serializer.data, status=status.HTTP_201_CREATED
@@ -364,7 +382,9 @@ class ProjectViewSet(WebhookMixin, BaseViewSet):
             workspace = Workspace.objects.get(slug=slug)
 
             project = Project.objects.get(pk=pk)
-
+            current_instance = json.dumps(
+                ProjectSerializer(project).data, cls=DjangoJSONEncoder
+            )
             if project.archived_at:
                 return Response(
                     {"error": "Archived projects cannot be updated"},
@@ -401,6 +421,16 @@ class ProjectViewSet(WebhookMixin, BaseViewSet):
                     self.get_queryset()
                     .filter(pk=serializer.data["id"])
                     .first()
+                )
+
+                model_activity.delay(
+                    model_name="project",
+                    model_id=str(project.id),
+                    requested_data=request.data,
+                    current_instance=current_instance,
+                    actor_id=request.user.id,
+                    slug=slug,
+                    origin=request.META.get("HTTP_ORIGIN"),
                 )
                 serializer = ProjectListSerializer(project)
                 return Response(serializer.data, status=status.HTTP_200_OK)
@@ -534,8 +564,7 @@ class ProjectUserViewsEndpoint(BaseAPIView):
 
 
 class ProjectFavoritesViewSet(BaseViewSet):
-    serializer_class = ProjectFavoriteSerializer
-    model = ProjectFavorite
+    model = UserFavorite
 
     def get_queryset(self):
         return self.filter_queryset(
@@ -553,15 +582,21 @@ class ProjectFavoritesViewSet(BaseViewSet):
         serializer.save(user=self.request.user)
 
     def create(self, request, slug):
-        serializer = ProjectFavoriteSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        _ = UserFavorite.objects.create(
+            user=request.user,
+            entity_type="project",
+            entity_identifier=request.data.get("project"),
+            project_id=request.data.get("project"),
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def destroy(self, request, slug, project_id):
-        project_favorite = ProjectFavorite.objects.get(
-            project=project_id, user=request.user, workspace__slug=slug
+        project_favorite = UserFavorite.objects.get(
+            entity_identifier=project_id,
+            entity_type="project",
+            project=project_id,
+            user=request.user,
+            workspace__slug=slug,
         )
         project_favorite.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -576,11 +611,19 @@ class ProjectPublicCoverImagesEndpoint(BaseAPIView):
     @cache_response(60 * 60 * 24, user=False)
     def get(self, request):
         files = []
-        s3 = boto3.client(
-            "s3",
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        )
+        if settings.USE_MINIO:
+            s3 = boto3.client(
+                "s3",
+                endpoint_url=settings.AWS_S3_ENDPOINT_URL,
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            )
+        else:
+            s3 = boto3.client(
+                "s3",
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            )
         params = {
             "Bucket": settings.AWS_STORAGE_BUCKET_NAME,
             "Prefix": "static/project-cover/",
@@ -600,29 +643,28 @@ class ProjectPublicCoverImagesEndpoint(BaseAPIView):
         return Response(files, status=status.HTTP_200_OK)
 
 
-class ProjectDeployBoardViewSet(BaseViewSet):
+class DeployBoardViewSet(BaseViewSet):
     permission_classes = [
         ProjectMemberPermission,
     ]
-    serializer_class = ProjectDeployBoardSerializer
-    model = ProjectDeployBoard
+    serializer_class = DeployBoardSerializer
+    model = DeployBoard
 
-    def get_queryset(self):
-        return (
-            super()
-            .get_queryset()
-            .filter(
-                workspace__slug=self.kwargs.get("slug"),
-                project_id=self.kwargs.get("project_id"),
-            )
-            .select_related("project")
-        )
+    def list(self, request, slug, project_id):
+        project_deploy_board = DeployBoard.objects.filter(
+            entity_name="project",
+            entity_identifier=project_id,
+            workspace__slug=slug,
+        ).first()
+
+        serializer = DeployBoardSerializer(project_deploy_board)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request, slug, project_id):
-        comments = request.data.get("comments", False)
-        reactions = request.data.get("reactions", False)
+        comments = request.data.get("is_comments_enabled", False)
+        reactions = request.data.get("is_reactions_enabled", False)
         inbox = request.data.get("inbox", None)
-        votes = request.data.get("votes", False)
+        votes = request.data.get("is_votes_enabled", False)
         views = request.data.get(
             "views",
             {
@@ -634,17 +676,18 @@ class ProjectDeployBoardViewSet(BaseViewSet):
             },
         )
 
-        project_deploy_board, _ = ProjectDeployBoard.objects.get_or_create(
-            anchor=f"{slug}/{project_id}",
+        project_deploy_board, _ = DeployBoard.objects.get_or_create(
+            entity_name="project",
+            entity_identifier=project_id,
             project_id=project_id,
         )
-        project_deploy_board.comments = comments
-        project_deploy_board.reactions = reactions
         project_deploy_board.inbox = inbox
-        project_deploy_board.votes = votes
-        project_deploy_board.views = views
+        project_deploy_board.view_props = views
+        project_deploy_board.is_votes_enabled = votes
+        project_deploy_board.is_comments_enabled = comments
+        project_deploy_board.is_reactions_enabled = reactions
 
         project_deploy_board.save()
 
-        serializer = ProjectDeployBoardSerializer(project_deploy_board)
+        serializer = DeployBoardSerializer(project_deploy_board)
         return Response(serializer.data, status=status.HTTP_200_OK)

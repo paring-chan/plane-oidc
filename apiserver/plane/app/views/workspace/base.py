@@ -44,6 +44,7 @@ from plane.db.models import (
     WorkspaceTheme,
 )
 from plane.utils.cache import cache_response, invalidate_cache
+from plane.utils.constants import RESTRICTED_WORKSPACE_SLUGS
 
 
 class WorkSpaceViewSet(BaseViewSet):
@@ -96,6 +97,7 @@ class WorkSpaceViewSet(BaseViewSet):
 
     @invalidate_cache(path="/api/workspaces/", user=False)
     @invalidate_cache(path="/api/users/me/workspaces/")
+    @invalidate_cache(path="/api/instances/", user=False)
     def create(self, request):
         try:
             serializer = WorkSpaceSerializer(data=request.data)
@@ -117,7 +119,7 @@ class WorkSpaceViewSet(BaseViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            if serializer.is_valid():
+            if serializer.is_valid(raise_exception=True):
                 serializer.save(owner=request.user)
                 # Create Workspace member
                 _ = WorkspaceMember.objects.create(
@@ -151,8 +153,12 @@ class WorkSpaceViewSet(BaseViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     @invalidate_cache(path="/api/workspaces/", user=False)
-    @invalidate_cache(path="/api/users/me/workspaces/", multiple=True, user=False)
-    @invalidate_cache(path="/api/users/me/settings/", multiple=True, user=False)
+    @invalidate_cache(
+        path="/api/users/me/workspaces/", multiple=True, user=False
+    )
+    @invalidate_cache(
+        path="/api/users/me/settings/", multiple=True, user=False
+    )
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
@@ -226,7 +232,10 @@ class WorkSpaceAvailabilityCheckEndpoint(BaseAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        workspace = Workspace.objects.filter(slug=slug).exists()
+        workspace = (
+            Workspace.objects.filter(slug=slug).exists()
+            or slug in RESTRICTED_WORKSPACE_SLUGS
+        )
         return Response({"status": not workspace}, status=status.HTTP_200_OK)
 
 
