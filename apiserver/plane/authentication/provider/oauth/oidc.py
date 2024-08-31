@@ -60,12 +60,13 @@ class OpenIDConnectProvider(OauthAdapter):
         client_id = OIDC_CLIENT_ID
         client_secret = OIDC_CLIENT_SECRET
 
-        redirect_uri = f"""{"https" if request.is_secure() else "http"}://{request.get_host()}/auth/github/callback/"""
+        redirect_uri = f"""{"https" if request.is_secure() else "http"}://{request.get_host()}/auth/oidc/callback/"""
         url_params = {
             "client_id": client_id,
             "redirect_uri": redirect_uri,
             "scope": self.scope,
             "state": state,
+            "response_type": "code"
         }
         auth_url = (
             f"{OIDC_URL_AUTHORIZATION}?{urlencode(url_params)}"
@@ -130,7 +131,7 @@ class OpenIDConnectProvider(OauthAdapter):
             {
                 "email": email,
                 "user": {
-                    "provider_id": user_info_response.get("id"),
+                    "provider_id": user_info_response.get("sub"),
                     "email": email,
                     "avatar": user_info_response.get("avatar_url", ""),
                     "first_name": user_info_response.get("name", ""),
