@@ -60,7 +60,7 @@ class OpenIDConnectProvider(OauthAdapter):
         client_id = OIDC_CLIENT_ID
         client_secret = OIDC_CLIENT_SECRET
 
-        redirect_uri = f"""{"https" if request.is_secure() else "http"}://{request.get_host()}/auth/github/callback/"""
+        redirect_uri = f"""{"https" if request.is_secure() else "http"}://{request.get_host()}/auth/oidc/callback/"""
         url_params = {
             "client_id": client_id,
             "redirect_uri": redirect_uri,
