@@ -32,7 +32,7 @@ export const OpenIDConnectConfiguration: React.FC<Props> = observer((props) => {
     <>
       {isOpenIDConnectConfigured ? (
         <div className="flex items-center gap-4">
-          <Link href="/authentication/gitlab" className={cn(getButtonStyling("link-primary", "md"), "font-medium")}>
+          <Link href="/authentication/oidc" className={cn(getButtonStyling("link-primary", "md"), "font-medium")}>
             Edit
           </Link>
           <ToggleSwitch
