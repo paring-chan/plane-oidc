@@ -66,7 +66,7 @@ class OpenIDConnectProvider(OauthAdapter):
             "redirect_uri": redirect_uri,
             "scope": self.scope,
             "state": state,
-            "response_type": "code id_token"
+            "response_type": "code"
         }
         auth_url = (
             f"{OIDC_URL_AUTHORIZATION}?{urlencode(url_params)}"
