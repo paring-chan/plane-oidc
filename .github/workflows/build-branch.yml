@@ -295,7 +295,7 @@ jobs:
       
       - name: Push Frontend to Docker Container Registry
         uses: int128/docker-manifest-create-action@v2
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ github.event_name == 'release' || env.TARGET_BRANCH == 'master' }}
         with:
           tags: |
             ${{ env.FRONTEND_TAG }}:stable
@@ -306,7 +306,7 @@ jobs:
 
       - name: Push Frontend to Docker Container Registry
         uses: int128/docker-manifest-create-action@v2
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ github.event_name == 'release' || env.TARGET_BRANCH == 'master' }}
         with:
           tags: |
             ${{ env.FRONTEND_TAG }}
