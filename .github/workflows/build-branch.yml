@@ -321,14 +321,34 @@ jobs:
           registry: ${{ secrets.DOCKER_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Push Frontend to Docker Container Registry
+
+      - name: Push Frontend to Docker Container Registry (Release)
         uses: int128/docker-manifest-create-action@v2
-        if: ${{ github.event_name == 'release' || env.TARGET_BRANCH == 'master' }}
+        if: ${{ github.event_name == 'release' && env.IS_PRERELEASE != 'true' }}
         with:
           tags: |
             ${{ env.FRONTEND_TAG }}:stable
             ${{ env.FRONTEND_TAG }}:${{ github.event.release.tag_name }}
+          sources: |
+            ${{ env.FRONTEND_TAG_AMD64 }}
+            ${{ env.FRONTEND_TAG_ARM64 }}
+      
+      - name: Push Frontend to Docker Container Registry (Pre-Release)
+        uses: int128/docker-manifest-create-action@v2
+        if: ${{ github.event_name == 'release' && env.IS_PRERELEASE == 'true' }}
+        with:
+          tags: |
+            ${{ env.FRONTEND_TAG }}:${{ github.event.release.tag_name }}
+          sources: |
+            ${{ env.FRONTEND_TAG_AMD64 }}
+            ${{ env.FRONTEND_TAG_ARM64 }}
+          
+      - name: Push Frontend to Docker Container Registry (Master)
+        uses: int128/docker-manifest-create-action@v2
+        if: ${{ env.TARGET_BRANCH == 'master' }}
+        with:
+          tags: |
+            ${{ env.FRONTEND_TAG }}
           sources: |
             ${{ env.FRONTEND_TAG_AMD64 }}
             ${{ env.FRONTEND_TAG_ARM64 }}
