@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/common";
 // hooks
 import { useInstance } from "@/hooks/store";
 // icons
-import OpenIDConnectLogo from "@/public/logos/gitlab-logo.svg";
+import OpenIDConnectLogo from "@/public/logos/oidc-logo.svg";
 // local components
 import { InstanceOpenIDConnectConfigForm } from "./form";
 
@@ -38,7 +38,7 @@ const InstanceOpenIDConnectAuthenticationPage = observer(() => {
       loading: "Saving Configuration...",
       success: {
         title: "Configuration saved",
-        message: () => `GitLab authentication is now ${value ? "active" : "disabled"}.`,
+        message: () => `OIDC authentication is now ${value ? "active" : "disabled"}.`,
       },
       error: {
         title: "Error",
@@ -57,13 +57,13 @@ const InstanceOpenIDConnectAuthenticationPage = observer(() => {
   };
   return (
     <>
-      <PageHeader title="GitLab Authentication - Plane Web" />
+      <PageHeader title="OIDC Authentication - Plane Web" />
       <div className="relative container mx-auto w-full h-full p-4 py-4 space-y-6 flex flex-col">
         <div className="border-b border-custom-border-100 mx-4 py-4 space-y-1 flex-shrink-0">
           <AuthenticationMethodCard
-            name="GitLab"
-            description="Allow members to login or sign up to plane with their GitLab accounts."
-            icon={<Image src={OpenIDConnectLogo} height={24} width={24} alt="GitLab Logo" />}
+            name="OIDC"
+            description="Allow members to login or sign up to plane with their OIDC accounts."
+            icon={<Image src={OpenIDConnectLogo} height={24} width={24} alt="OIDC Logo" />}
             config={
               <ToggleSwitch
                 value={Boolean(parseInt(enableOpenIDConnectConfig))}

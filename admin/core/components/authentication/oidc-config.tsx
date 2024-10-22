@@ -25,14 +25,13 @@ export const OpenIDConnectConfiguration: React.FC<Props> = observer((props) => {
   const { formattedConfig } = useInstance();
   // derived values
   const enableOpenIDConnectConfig = formattedConfig?.IS_OIDC_ENABLED ?? "";
-  const automaticOpenIDConnectRedirect = formattedConfig?.IS_OIDC_AUTO ?? "";
   const isOpenIDConnectConfigured = !!formattedConfig?.OIDC_CLIENT_ID && !!formattedConfig?.OIDC_CLIENT_SECRET;
 
   return (
     <>
       {isOpenIDConnectConfigured ? (
         <div className="flex items-center gap-4">
-          <Link href="/authentication/gitlab" className={cn(getButtonStyling("link-primary", "md"), "font-medium")}>
+          <Link href="/authentication/oidc" className={cn(getButtonStyling("link-primary", "md"), "font-medium")}>
             Edit
           </Link>
           <ToggleSwitch
@@ -47,25 +46,13 @@ export const OpenIDConnectConfiguration: React.FC<Props> = observer((props) => {
           />
         </div>
       ) : (
-        <>
-          <ToggleSwitch
-            label="Automatic OpenID Connect Redirect (only activate if tested!)"
-            value={Boolean(parseInt(automaticOpenIDConnectRedirect))}
-            onChange={() => {
-              Boolean(parseInt(automaticOpenIDConnectRedirect)) === true
-                ? updateConfig("IS_OIDC_AUTO", "0")
-                : updateConfig("IS_OIDC_AUTO", "1");
-            }}
-            size="sm"
-          />
-          <Link
-            href="/authentication/oidc"
-            className={cn(getButtonStyling("neutral-primary", "sm"), "text-custom-text-300")}
-          >
-            <Settings2 className="h-4 w-4 p-0.5 text-custom-text-300/80" />
-            Configure
-          </Link>
-        </>
+        <Link
+          href="/authentication/oidc"
+          className={cn(getButtonStyling("neutral-primary", "sm"), "text-custom-text-300")}
+        >
+          <Settings2 className="h-4 w-4 p-0.5 text-custom-text-300/80" />
+          Configure
+        </Link>
       )}
     </>
   );

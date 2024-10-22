@@ -3,9 +3,9 @@ import isEmpty from "lodash/isEmpty";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 // types
-import { IFormattedInstanceConfiguration, TInstanceOpenIDConnectAuthenticationConfigurationKeys } from "@plane/types";
+import { IFormattedInstanceConfiguration, TInstanceConfigurationKeys, TInstanceOpenIDConnectAuthenticationConfigurationKeys } from "@plane/types";
 // ui
-import { Button, TOAST_TYPE, getButtonStyling, setToast } from "@plane/ui";
+import { Button, TOAST_TYPE, getButtonStyling, setToast, ToggleSwitch, setPromiseToast } from "@plane/ui";
 // components
 import {
   CodeBlock,
@@ -30,8 +30,9 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
   const { config } = props;
   // states
   const [isDiscardChangesModalOpen, setIsDiscardChangesModalOpen] = useState(false);
+  const [isSubmittingAuto, setIsSubmittingAuto] = useState(false);
   // store hooks
-  const { updateInstanceConfigurations } = useInstance();
+  const { formattedConfig, updateInstanceConfigurations } = useInstance();
   // form data
   const {
     handleSubmit,
@@ -49,6 +50,37 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
     },
   });
 
+  const updateConfig = async (key: TInstanceConfigurationKeys, value: string) => {
+    setIsSubmittingAuto(true);
+
+    const payload = {
+      [key]: value,
+    };
+
+    const updateConfigPromise = updateInstanceConfigurations(payload);
+
+    setPromiseToast(updateConfigPromise, {
+      loading: "Saving configuration",
+      success: {
+        title: "Success",
+        message: () => "Configuration saved successfully",
+      },
+      error: {
+        title: "Error",
+        message: () => "Failed to save configuration",
+      },
+    });
+
+    await updateConfigPromise
+      .then(() => {
+        setIsSubmittingAuto(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setIsSubmittingAuto(false);
+      });
+  };
+
   const originURL = !isEmpty(API_BASE_URL) ? API_BASE_URL : typeof window !== "undefined" ? window.location.origin : "";
 
   const OIDC_FORM_FIELDS: TControllerInputFormField[] = [
@@ -57,9 +89,7 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       type: "text",
       label: "Authorization Endpoint",
       description: (
-        <>
-          Example: https://idp.your-company.com/o/authorize/. This is the URL where users will be redirected to
-        </>
+        <>Example: https://idp.your-company.com/o/authorize/. This is the URL where users will be redirected to</>
       ),
       placeholder: "https://idp.your-company.com/o/authorize/",
       error: Boolean(errors.OIDC_URL_AUTHORIZATION),
@@ -71,8 +101,8 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       label: "Token Endpoint",
       description: (
         <>
-          Example: https://idp.your-company.com/o/token/. This is the URL where we will exchange the code for an
-          access token.
+          Example: https://idp.your-company.com/o/token/. This is the URL where we will exchange the code for an access
+          token.
         </>
       ),
       placeholder: "https://idp.your-company.com/o/token/",
@@ -84,9 +114,7 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       type: "text",
       label: "UserInfo Endpoint",
       description: (
-        <>
-          Example: https://idp.your-company.com/o/userinfo/. This is the URL where we will get user information.
-        </>
+        <>Example: https://idp.your-company.com/o/userinfo/. This is the URL where we will get user information.</>
       ),
       placeholder: "https://idp.your-company.com/o/userinfo/",
       error: Boolean(errors.OIDC_URL_USERINFO),
@@ -97,9 +125,7 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       type: "text",
       label: "EndSession Endpoint",
       description: (
-        <>
-          Example: https://idp.your-company.com/o/revoke/. This is the URL where we will revoke the users session.
-        </>
+        <>Example: https://idp.your-company.com/o/revoke/. This is the URL where we will revoke the users session.</>
       ),
       placeholder: "https://idp.your-company.com/o/revoke/",
       error: Boolean(errors.OIDC_URL_ENDSESSION),
@@ -109,11 +135,7 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       key: "OIDC_CLIENT_ID",
       type: "text",
       label: "Client ID",
-      description: (
-        <>
-          Get this from your OpenID Connect Provider.
-        </>
-      ),
+      description: <>Get this from your OpenID Connect Provider.</>,
       placeholder: "c2ef2e7fc4e9d15aa7630f5637d59e8e4a27ff01dceebdb26b0d267b9adcf3c3",
       error: Boolean(errors.OIDC_CLIENT_ID),
       required: true,
@@ -122,11 +144,7 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       key: "OIDC_CLIENT_SECRET",
       type: "password",
       label: "Client Secret",
-      description: (
-        <>
-          Get this from your OpenID Connect Provider as well.
-        </>
-      ),
+      description: <>Get this from your OpenID Connect Provider as well.</>,
       placeholder: "gloas-f79cfa9a03c97f6ffab303177a5a6778a53c61e3914ba093412f68a9298a1b28",
       error: Boolean(errors.OIDC_CLIENT_SECRET),
       required: true,
@@ -140,8 +158,8 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       url: `${originURL}/auth/oidc/callback/`,
       description: (
         <>
-          We will auto-generate this. Paste this into the{" "}
-          <CodeBlock darkerShade>Redirect URI</CodeBlock> field of your OpenID Connect Provider.
+          We will auto-generate this. Paste this into the <CodeBlock darkerShade>Redirect URI</CodeBlock> field of your
+          OpenID Connect Provider.
         </>
       ),
     },
@@ -175,6 +193,9 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
       setIsDiscardChangesModalOpen(true);
     }
   };
+
+
+  const automaticOpenIDConnectRedirect = formattedConfig?.IS_OIDC_AUTO ?? "";
 
   return (
     <>
@@ -221,6 +242,17 @@ export const InstanceOpenIDConnectConfigForm: FC<Props> = (props) => {
               {OIDC_SERVICE_FIELD.map((field) => (
                 <CopyField key={field.key} label={field.label} url={field.url} description={field.description} />
               ))}
+              <ToggleSwitch
+                label="Automatic OpenID Connect Redirect (only activate if tested!)"
+                value={Boolean(parseInt(automaticOpenIDConnectRedirect))}
+                onChange={() => {
+                  Boolean(parseInt(automaticOpenIDConnectRedirect)) === true
+                    ? updateConfig("IS_OIDC_AUTO", "0")
+                    : updateConfig("IS_OIDC_AUTO", "1");
+                }}
+                size="sm"
+                disabled={isSubmittingAuto}
+              />
             </div>
           </div>
         </div>

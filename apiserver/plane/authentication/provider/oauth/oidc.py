@@ -19,7 +19,7 @@ from plane.authentication.adapter.error import (
 class OpenIDConnectProvider(OauthAdapter):
 
     provider = "oidc"
-    scope = "openid profile email"
+    scope = "openid profile email offline_access"
 
     def __init__(self, request, code=None, state=None, callback=None):
 
