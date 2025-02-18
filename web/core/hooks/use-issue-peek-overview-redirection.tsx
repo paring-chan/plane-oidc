@@ -1,14 +1,21 @@
 import { useRouter } from "next/navigation";
+// constants
+import { EIssueServiceType } from "@plane/constants";
 // types
 import { TIssue } from "@plane/types";
+// helpers
+import { generateWorkItemLink } from "@/helpers/issue.helper";
 // hooks
-import { useIssueDetail } from "./store";
+import { useIssueDetail, useProject } from "./store";
 
-const useIssuePeekOverviewRedirection = () => {
+const useIssuePeekOverviewRedirection = (isEpic: boolean = false) => {
   // router
   const router = useRouter();
   //   store hooks
-  const { getIsIssuePeeked, setPeekIssue } = useIssueDetail();
+  const { getIsIssuePeeked, setPeekIssue } = useIssueDetail(
+    isEpic ? EIssueServiceType.EPICS : EIssueServiceType.ISSUES
+  );
+  const { getProjectIdentifierById } = useProject();
 
   const handleRedirection = (
     workspaceSlug: string | undefined,
@@ -18,13 +25,23 @@ const useIssuePeekOverviewRedirection = () => {
   ) => {
     if (!issue) return;
     const { project_id, id, archived_at, tempId } = issue;
+    const projectIdentifier = getProjectIdentifierById(issue?.project_id);
 
+    const workItemLink = generateWorkItemLink({
+      workspaceSlug,
+      projectId: project_id,
+      issueId: id,
+      projectIdentifier,
+      sequenceId: issue?.sequence_id,
+      isEpic,
+      isArchived: !!archived_at,
+    });
     if (workspaceSlug && project_id && id && !getIsIssuePeeked(id) && !tempId) {
-      const issuePath = `/${workspaceSlug}/projects/${project_id}/${archived_at ? "archives/" : ""}issues/${id}`;
-
-      isMobile
-        ? router.push(issuePath)
-        : setPeekIssue({ workspaceSlug, projectId: project_id, issueId: id, nestingLevel });
+      if (isMobile) {
+        router.push(workItemLink);
+      } else {
+        setPeekIssue({ workspaceSlug, projectId: project_id, issueId: id, nestingLevel, isArchived: !!archived_at });
+      }
     }
   };
 

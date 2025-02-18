@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import isEmpty from "lodash/isEmpty";
 import { observer } from "mobx-react";
 import { useParams, usePathname } from "next/navigation";
+import { useTranslation } from "@plane/i18n";
 // types
 import type { TIssue } from "@plane/types";
 // ui
@@ -14,40 +15,17 @@ import { ConfirmIssueDiscard } from "@/components/issues";
 import { isEmptyHtmlString } from "@/helpers/string.helper";
 // hooks
 import { useIssueModal } from "@/hooks/context/use-issue-modal";
-import { useEventTracker } from "@/hooks/store";
-// services
-import { IssueDraftService } from "@/services/issue";
+import { useEventTracker, useWorkspaceDraftIssues } from "@/hooks/store";
 // local components
-import { IssueFormRoot } from "./form";
+import { IssueFormRoot, type IssueFormProps } from "./form";
 
-export interface DraftIssueProps {
+export interface DraftIssueProps extends IssueFormProps {
   changesMade: Partial<TIssue> | null;
-  data?: Partial<TIssue>;
-  issueTitleRef: React.MutableRefObject<HTMLInputElement | null>;
-  isCreateMoreToggleEnabled: boolean;
-  onCreateMoreToggleChange: (value: boolean) => void;
   onChange: (formData: Partial<TIssue> | null) => void;
-  onClose: (saveDraftIssueInLocalStorage?: boolean) => void;
-  onSubmit: (formData: Partial<TIssue>, is_draft_issue?: boolean) => Promise<void>;
-  projectId: string;
-  isDraft: boolean;
 }
 
-const issueDraftService = new IssueDraftService();
-
 export const DraftIssueLayout: React.FC<DraftIssueProps> = observer((props) => {
-  const {
-    changesMade,
-    data,
-    issueTitleRef,
-    onChange,
-    onClose,
-    onSubmit,
-    projectId,
-    isCreateMoreToggleEnabled,
-    onCreateMoreToggleChange,
-    isDraft,
-  } = props;
+  const { changesMade, data, onChange, onClose, projectId } = props;
   // states
   const [issueDiscardModal, setIssueDiscardModal] = useState(false);
   // router params
@@ -57,10 +35,12 @@ export const DraftIssueLayout: React.FC<DraftIssueProps> = observer((props) => {
   // store hooks
   const { captureIssueEvent } = useEventTracker();
   const { handleCreateUpdatePropertyValues } = useIssueModal();
+  const { createIssue } = useWorkspaceDraftIssues();
+  const { t } = useTranslation();
 
   const handleClose = () => {
     if (data?.id) {
-      onClose(false);
+      onClose();
       setIssueDiscardModal(false);
     } else {
       if (changesMade) {
@@ -79,11 +59,11 @@ export const DraftIssueLayout: React.FC<DraftIssueProps> = observer((props) => {
             delete changesMade.description_html;
         });
         if (isEmpty(changesMade)) {
-          onClose(false);
+          onClose();
           setIssueDiscardModal(false);
         } else setIssueDiscardModal(true);
       } else {
-        onClose(false);
+        onClose();
         setIssueDiscardModal(false);
       }
     }
@@ -95,34 +75,34 @@ export const DraftIssueLayout: React.FC<DraftIssueProps> = observer((props) => {
     const payload = {
       ...changesMade,
       name: changesMade?.name && changesMade?.name?.trim() !== "" ? changesMade.name?.trim() : "Untitled",
+      project_id: projectId,
     };
 
-    const response = await issueDraftService
-      .createDraftIssue(workspaceSlug.toString(), projectId.toString(), payload)
+    const response = await createIssue(workspaceSlug.toString(), payload)
       .then((res) => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success!",
-          message: "Draft Issue created successfully.",
+          title: `${t("success")}!`,
+          message: t("workspace_draft_issues.toasts.created.success"),
         });
         captureIssueEvent({
-          eventName: "Draft issue created",
+          eventName: "Draft work item created",
           payload: { ...res, state: "SUCCESS" },
           path: pathname,
         });
         onChange(null);
         setIssueDiscardModal(false);
-        onClose(false);
+        onClose();
         return res;
       })
       .catch(() => {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "Issue could not be created. Please try again.",
+          title: `${t("error")}!`,
+          message: t("workspace_draft_issues.toasts.created.error"),
         });
         captureIssueEvent({
-          eventName: "Draft issue created",
+          eventName: "Draft work item created",
           payload: { ...payload, state: "FAILED" },
           path: pathname,
         });
@@ -131,8 +111,10 @@ export const DraftIssueLayout: React.FC<DraftIssueProps> = observer((props) => {
     if (response && handleCreateUpdatePropertyValues) {
       handleCreateUpdatePropertyValues({
         issueId: response.id,
+        issueTypeId: response.type_id,
         projectId,
         workspaceSlug: workspaceSlug?.toString(),
+        isDraft: true,
       });
     }
   };
@@ -146,20 +128,10 @@ export const DraftIssueLayout: React.FC<DraftIssueProps> = observer((props) => {
         onDiscard={() => {
           onChange(null);
           setIssueDiscardModal(false);
-          onClose(false);
+          onClose();
         }}
       />
-      <IssueFormRoot
-        isCreateMoreToggleEnabled={isCreateMoreToggleEnabled}
-        onCreateMoreToggleChange={onCreateMoreToggleChange}
-        data={data}
-        issueTitleRef={issueTitleRef}
-        onChange={onChange}
-        onClose={handleClose}
-        onSubmit={onSubmit}
-        projectId={projectId}
-        isDraft={isDraft}
-      />
+      <IssueFormRoot {...props} onClose={handleClose} />
     </>
   );
 });

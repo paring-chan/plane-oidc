@@ -18,8 +18,11 @@ from django.db.models import (
     Value,
     Sum,
     FloatField,
+    Case,
+    When,
 )
-from django.db.models.functions import Coalesce, Cast
+from django.db import models
+from django.db.models.functions import Coalesce, Cast, Concat
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
 
@@ -30,6 +33,7 @@ from rest_framework.response import Response
 # Module imports
 from plane.app.permissions import (
     ProjectEntityPermission,
+    ProjectLitePermission,
     allow_permission,
     ROLE,
 )
@@ -50,9 +54,10 @@ from plane.db.models import (
     ModuleLink,
     ModuleUserProperties,
     Project,
+    UserRecentVisit,
 )
 from plane.utils.analytics_plot import burndown_plot
-from plane.utils.user_timezone_converter import user_timezone_converter
+from plane.utils.timezone_converter import user_timezone_converter
 from plane.bgtasks.webhook_task import model_activity
 from .. import BaseAPIView, BaseViewSet
 from plane.bgtasks.recent_visited_task import recent_visited_task
@@ -81,6 +86,7 @@ class ModuleViewSet(BaseViewSet):
             Issue.issue_objects.filter(
                 state__group="cancelled",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(cnt=Count("pk"))
@@ -90,6 +96,7 @@ class ModuleViewSet(BaseViewSet):
             Issue.issue_objects.filter(
                 state__group="completed",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(cnt=Count("pk"))
@@ -99,6 +106,7 @@ class ModuleViewSet(BaseViewSet):
             Issue.issue_objects.filter(
                 state__group="started",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(cnt=Count("pk"))
@@ -108,6 +116,7 @@ class ModuleViewSet(BaseViewSet):
             Issue.issue_objects.filter(
                 state__group="unstarted",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(cnt=Count("pk"))
@@ -117,6 +126,7 @@ class ModuleViewSet(BaseViewSet):
             Issue.issue_objects.filter(
                 state__group="backlog",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(cnt=Count("pk"))
@@ -125,6 +135,7 @@ class ModuleViewSet(BaseViewSet):
         total_issues = (
             Issue.issue_objects.filter(
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(cnt=Count("pk"))
@@ -135,6 +146,7 @@ class ModuleViewSet(BaseViewSet):
                 estimate_point__estimate__type="points",
                 state__group="completed",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(
@@ -149,12 +161,11 @@ class ModuleViewSet(BaseViewSet):
             Issue.issue_objects.filter(
                 estimate_point__estimate__type="points",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(
-                total_estimate_points=Sum(
-                    Cast("estimate_point__value", FloatField())
-                )
+                total_estimate_points=Sum(Cast("estimate_point__value", FloatField()))
             )
             .values("total_estimate_points")[:1]
         )
@@ -163,12 +174,11 @@ class ModuleViewSet(BaseViewSet):
                 estimate_point__estimate__type="points",
                 state__group="backlog",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(
-                backlog_estimate_point=Sum(
-                    Cast("estimate_point__value", FloatField())
-                )
+                backlog_estimate_point=Sum(Cast("estimate_point__value", FloatField()))
             )
             .values("backlog_estimate_point")[:1]
         )
@@ -177,6 +187,7 @@ class ModuleViewSet(BaseViewSet):
                 estimate_point__estimate__type="points",
                 state__group="unstarted",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(
@@ -191,12 +202,11 @@ class ModuleViewSet(BaseViewSet):
                 estimate_point__estimate__type="points",
                 state__group="started",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(
-                started_estimate_point=Sum(
-                    Cast("estimate_point__value", FloatField())
-                )
+                started_estimate_point=Sum(Cast("estimate_point__value", FloatField()))
             )
             .values("started_estimate_point")[:1]
         )
@@ -205,6 +215,7 @@ class ModuleViewSet(BaseViewSet):
                 estimate_point__estimate__type="points",
                 state__group="cancelled",
                 issue_module__module_id=OuterRef("pk"),
+                issue_module__deleted_at__isnull=True,
             )
             .values("issue_module__module_id")
             .annotate(
@@ -227,9 +238,7 @@ class ModuleViewSet(BaseViewSet):
             .prefetch_related(
                 Prefetch(
                     "link_module",
-                    queryset=ModuleLink.objects.select_related(
-                        "module", "created_by"
-                    ),
+                    queryset=ModuleLink.objects.select_related("module", "created_by"),
                 )
             )
             .annotate(
@@ -246,8 +255,7 @@ class ModuleViewSet(BaseViewSet):
             )
             .annotate(
                 started_issues=Coalesce(
-                    Subquery(started_issues[:1]),
-                    Value(0, output_field=IntegerField()),
+                    Subquery(started_issues[:1]), Value(0, output_field=IntegerField())
                 )
             )
             .annotate(
@@ -258,51 +266,48 @@ class ModuleViewSet(BaseViewSet):
             )
             .annotate(
                 backlog_issues=Coalesce(
-                    Subquery(backlog_issues[:1]),
-                    Value(0, output_field=IntegerField()),
+                    Subquery(backlog_issues[:1]), Value(0, output_field=IntegerField())
                 )
             )
             .annotate(
                 total_issues=Coalesce(
-                    Subquery(total_issues[:1]),
-                    Value(0, output_field=IntegerField()),
+                    Subquery(total_issues[:1]), Value(0, output_field=IntegerField())
                 )
             )
             .annotate(
                 backlog_estimate_points=Coalesce(
                     Subquery(backlog_estimate_point),
                     Value(0, output_field=FloatField()),
-                ),
+                )
             )
             .annotate(
                 unstarted_estimate_points=Coalesce(
                     Subquery(unstarted_estimate_point),
                     Value(0, output_field=FloatField()),
-                ),
+                )
             )
             .annotate(
                 started_estimate_points=Coalesce(
                     Subquery(started_estimate_point),
                     Value(0, output_field=FloatField()),
-                ),
+                )
             )
             .annotate(
                 cancelled_estimate_points=Coalesce(
                     Subquery(cancelled_estimate_point),
                     Value(0, output_field=FloatField()),
-                ),
+                )
             )
             .annotate(
                 completed_estimate_points=Coalesce(
                     Subquery(completed_estimate_point),
                     Value(0, output_field=FloatField()),
-                ),
+                )
             )
             .annotate(
                 total_estimate_points=Coalesce(
-                    Subquery(total_estimate_point),
-                    Value(0, output_field=FloatField()),
-                ),
+                    Subquery(total_estimate_point), Value(0, output_field=FloatField())
+                )
             )
             .annotate(
                 member_ids=Coalesce(
@@ -317,13 +322,7 @@ class ModuleViewSet(BaseViewSet):
             .order_by("-is_favorite", "-created_at")
         )
 
-    allow_permission(
-        [
-            ROLE.ADMIN,
-            ROLE.MEMBER,
-        ]
-    )
-
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
     def create(self, request, slug, project_id):
         project = Project.objects.get(workspace__slug=slug, pk=project_id)
         serializer = ModuleWriteSerializer(
@@ -386,16 +385,11 @@ class ModuleViewSet(BaseViewSet):
             return Response(module, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
-
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def list(self, request, slug, project_id):
         queryset = self.get_queryset().filter(archived_at__isnull=True)
         if self.fields:
-            modules = ModuleSerializer(
-                queryset,
-                many=True,
-                fields=self.fields,
-            ).data
+            modules = ModuleSerializer(queryset, many=True, fields=self.fields).data
         else:
             modules = queryset.values(  # Required fields
                 "id",
@@ -435,13 +429,7 @@ class ModuleViewSet(BaseViewSet):
             )
         return Response(modules, status=status.HTTP_200_OK)
 
-    allow_permission(
-        [
-            ROLE.ADMIN,
-            ROLE.MEMBER,
-        ]
-    )
-
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
     def retrieve(self, request, slug, project_id, pk):
         queryset = (
             self.get_queryset()
@@ -452,6 +440,7 @@ class ModuleViewSet(BaseViewSet):
                     project_id=self.kwargs.get("project_id"),
                     parent__isnull=False,
                     issue_module__module_id=pk,
+                    issue_module__deleted_at__isnull=True,
                 )
                 .order_by()
                 .annotate(count=Func(F("id"), function="Count"))
@@ -461,8 +450,7 @@ class ModuleViewSet(BaseViewSet):
 
         if not queryset.exists():
             return Response(
-                {"error": "Module not found"},
-                status=status.HTTP_404_NOT_FOUND,
+                {"error": "Module not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
         estimate_type = Project.objects.filter(
@@ -481,6 +469,7 @@ class ModuleViewSet(BaseViewSet):
             assignee_distribution = (
                 Issue.issue_objects.filter(
                     issue_module__module_id=pk,
+                    issue_module__deleted_at__isnull=True,
                     workspace__slug=slug,
                     project_id=project_id,
                 )
@@ -488,18 +477,35 @@ class ModuleViewSet(BaseViewSet):
                 .annotate(last_name=F("assignees__last_name"))
                 .annotate(assignee_id=F("assignees__id"))
                 .annotate(display_name=F("assignees__display_name"))
-                .annotate(avatar=F("assignees__avatar"))
+                .annotate(
+                    avatar_url=Case(
+                        # If `avatar_asset` exists, use it to generate the asset URL
+                        When(
+                            assignees__avatar_asset__isnull=False,
+                            then=Concat(
+                                Value("/api/assets/v2/static/"),
+                                "assignees__avatar_asset",  # Assuming avatar_asset has an id or relevant field
+                                Value("/"),
+                            ),
+                        ),
+                        # If `avatar_asset` is None, fall back to using `avatar` field directly
+                        When(
+                            assignees__avatar_asset__isnull=True,
+                            then="assignees__avatar",
+                        ),
+                        default=Value(None),
+                        output_field=models.CharField(),
+                    )
+                )
                 .values(
                     "first_name",
                     "last_name",
                     "assignee_id",
-                    "avatar",
+                    "avatar_url",
                     "display_name",
                 )
                 .annotate(
-                    total_estimates=Sum(
-                        Cast("estimate_point__value", FloatField())
-                    ),
+                    total_estimates=Sum(Cast("estimate_point__value", FloatField()))
                 )
                 .annotate(
                     completed_estimates=Sum(
@@ -527,6 +533,7 @@ class ModuleViewSet(BaseViewSet):
             label_distribution = (
                 Issue.issue_objects.filter(
                     issue_module__module_id=pk,
+                    issue_module__deleted_at__isnull=True,
                     workspace__slug=slug,
                     project_id=project_id,
                 )
@@ -535,9 +542,7 @@ class ModuleViewSet(BaseViewSet):
                 .annotate(label_id=F("labels__id"))
                 .values("label_name", "color", "label_id")
                 .annotate(
-                    total_estimates=Sum(
-                        Cast("estimate_point__value", FloatField())
-                    ),
+                    total_estimates=Sum(Cast("estimate_point__value", FloatField()))
                 )
                 .annotate(
                     completed_estimates=Sum(
@@ -565,19 +570,18 @@ class ModuleViewSet(BaseViewSet):
             data["estimate_distribution"]["labels"] = label_distribution
 
             if modules and modules.start_date and modules.target_date:
-                data["estimate_distribution"]["completion_chart"] = (
-                    burndown_plot(
-                        queryset=modules,
-                        slug=slug,
-                        project_id=project_id,
-                        plot_type="points",
-                        module_id=pk,
-                    )
+                data["estimate_distribution"]["completion_chart"] = burndown_plot(
+                    queryset=modules,
+                    slug=slug,
+                    project_id=project_id,
+                    plot_type="points",
+                    module_id=pk,
                 )
 
         assignee_distribution = (
             Issue.issue_objects.filter(
                 issue_module__module_id=pk,
+                issue_module__deleted_at__isnull=True,
                 workspace__slug=slug,
                 project_id=project_id,
             )
@@ -585,22 +589,32 @@ class ModuleViewSet(BaseViewSet):
             .annotate(last_name=F("assignees__last_name"))
             .annotate(assignee_id=F("assignees__id"))
             .annotate(display_name=F("assignees__display_name"))
-            .annotate(avatar=F("assignees__avatar"))
+            .annotate(
+                avatar_url=Case(
+                    # If `avatar_asset` exists, use it to generate the asset URL
+                    When(
+                        assignees__avatar_asset__isnull=False,
+                        then=Concat(
+                            Value("/api/assets/v2/static/"),
+                            "assignees__avatar_asset",  # Assuming avatar_asset has an id or relevant field
+                            Value("/"),
+                        ),
+                    ),
+                    # If `avatar_asset` is None, fall back to using `avatar` field directly
+                    When(
+                        assignees__avatar_asset__isnull=True, then="assignees__avatar"
+                    ),
+                    default=Value(None),
+                    output_field=models.CharField(),
+                )
+            )
             .values(
-                "first_name",
-                "last_name",
-                "assignee_id",
-                "avatar",
-                "display_name",
+                "first_name", "last_name", "assignee_id", "avatar_url", "display_name"
             )
             .annotate(
                 total_issues=Count(
-                    "id",
-                    filter=Q(
-                        archived_at__isnull=True,
-                        is_draft=False,
-                    ),
-                ),
+                    "id", filter=Q(archived_at__isnull=True, is_draft=False)
+                )
             )
             .annotate(
                 completed_issues=Count(
@@ -628,6 +642,7 @@ class ModuleViewSet(BaseViewSet):
         label_distribution = (
             Issue.issue_objects.filter(
                 issue_module__module_id=pk,
+                issue_module__deleted_at__isnull=True,
                 workspace__slug=slug,
                 project_id=project_id,
             )
@@ -637,12 +652,8 @@ class ModuleViewSet(BaseViewSet):
             .values("label_name", "color", "label_id")
             .annotate(
                 total_issues=Count(
-                    "id",
-                    filter=Q(
-                        archived_at__isnull=True,
-                        is_draft=False,
-                    ),
-                ),
+                    "id", filter=Q(archived_at__isnull=True, is_draft=False)
+                )
             )
             .annotate(
                 completed_issues=Count(
@@ -672,7 +683,13 @@ class ModuleViewSet(BaseViewSet):
             "labels": label_distribution,
             "completion_chart": {},
         }
-        if modules and modules.start_date and modules.target_date:
+
+        if (
+            modules
+            and modules.start_date
+            and modules.target_date
+            and modules.total_issues > 0
+        ):
             data["distribution"]["completion_chart"] = burndown_plot(
                 queryset=modules,
                 slug=slug,
@@ -689,10 +706,7 @@ class ModuleViewSet(BaseViewSet):
             project_id=project_id,
         )
 
-        return Response(
-            data,
-            status=status.HTTP_200_OK,
-        )
+        return Response(data, status=status.HTTP_200_OK)
 
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
     def partial_update(self, request, slug, project_id, pk):
@@ -766,14 +780,10 @@ class ModuleViewSet(BaseViewSet):
 
     @allow_permission([ROLE.ADMIN], creator=True, model=Module)
     def destroy(self, request, slug, project_id, pk):
-        module = Module.objects.get(
-            workspace__slug=slug, project_id=project_id, pk=pk
-        )
+        module = Module.objects.get(workspace__slug=slug, project_id=project_id, pk=pk)
 
         module_issues = list(
-            ModuleIssue.objects.filter(module_id=pk).values_list(
-                "issue", flat=True
-            )
+            ModuleIssue.objects.filter(module_id=pk).values_list("issue", flat=True)
         )
         _ = [
             issue_activity.delay(
@@ -791,10 +801,7 @@ class ModuleViewSet(BaseViewSet):
         ]
         module.delete()
         # Delete the module issues
-        ModuleIssue.objects.filter(
-            module=pk,
-            project_id=project_id,
-        ).delete()
+        ModuleIssue.objects.filter(module=pk, project_id=project_id).delete()
         # Delete the user favorite module
         UserFavorite.objects.filter(
             user=request.user,
@@ -802,13 +809,18 @@ class ModuleViewSet(BaseViewSet):
             entity_identifier=pk,
             project_id=project_id,
         ).delete()
+        # delete the module from recent visits
+        UserRecentVisit.objects.filter(
+            project_id=project_id,
+            workspace__slug=slug,
+            entity_identifier=pk,
+            entity_name="module",
+        ).delete(soft=False)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ModuleLinkViewSet(BaseViewSet):
-    permission_classes = [
-        ProjectEntityPermission,
-    ]
+    permission_classes = [ProjectEntityPermission]
 
     model = ModuleLink
     serializer_class = ModuleLinkSerializer
@@ -838,6 +850,7 @@ class ModuleLinkViewSet(BaseViewSet):
 
 class ModuleFavoriteViewSet(BaseViewSet):
     model = UserFavorite
+    permission_classes = [ProjectLitePermission]
 
     def get_queryset(self):
         return self.filter_queryset(
@@ -870,7 +883,6 @@ class ModuleFavoriteViewSet(BaseViewSet):
 
 
 class ModuleUserPropertiesEndpoint(BaseAPIView):
-
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def patch(self, request, slug, project_id, module_id):
         module_properties = ModuleUserProperties.objects.get(

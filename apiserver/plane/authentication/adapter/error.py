@@ -69,7 +69,6 @@ AUTHENTICATION_ERROR_CODES = {
 
 
 class AuthenticationException(Exception):
-
     error_code = None
     error_message = None
     payload = {}
@@ -80,10 +79,7 @@ class AuthenticationException(Exception):
         self.payload = payload
 
     def get_error_dict(self):
-        error = {
-            "error_code": self.error_code,
-            "error_message": self.error_message,
-        }
+        error = {"error_code": self.error_code, "error_message": self.error_message}
         for key in self.payload:
             error[key] = self.payload[key]
 

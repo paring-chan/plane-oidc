@@ -1,6 +1,11 @@
 import { FC, useState } from "react";
 import { observer } from "mobx-react";
+// constants
+import { EIssueServiceType } from "@plane/constants";
+// plane-i18n
+import { useTranslation } from "@plane/i18n";
 // types
+import { TIssueServiceType } from "@plane/types";
 // ui
 import { AlertModalCore } from "@plane/ui";
 // helper
@@ -8,26 +13,28 @@ import { getFileName } from "@/helpers/attachment.helper";
 // hooks
 import { useIssueDetail } from "@/hooks/store";
 // types
-import { TAttachmentOperations } from "./root";
+import { TAttachmentOperations } from "../issue-detail-widgets/attachments/helper";
 
-export type TAttachmentOperationsRemoveModal = Exclude<TAttachmentOperations, "create">;
+export type TAttachmentOperationsRemoveModal = Pick<TAttachmentOperations, "remove">;
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   attachmentId: string;
-  handleAttachmentOperations: TAttachmentOperationsRemoveModal;
+  attachmentOperations: TAttachmentOperationsRemoveModal;
+  issueServiceType?: TIssueServiceType;
 };
 
 export const IssueAttachmentDeleteModal: FC<Props> = observer((props) => {
-  const { isOpen, onClose, attachmentId, handleAttachmentOperations } = props;
+  const { t } = useTranslation();
+  const { isOpen, onClose, attachmentId, attachmentOperations, issueServiceType = EIssueServiceType.ISSUES } = props;
   // states
   const [loader, setLoader] = useState(false);
 
   // store hooks
   const {
     attachment: { getAttachmentById },
-  } = useIssueDetail();
+  } = useIssueDetail(issueServiceType);
 
   // derived values
   const attachment = attachmentId ? getAttachmentById(attachmentId) : undefined;
@@ -40,7 +47,7 @@ export const IssueAttachmentDeleteModal: FC<Props> = observer((props) => {
 
   const handleDeletion = async (assetId: string) => {
     setLoader(true);
-    handleAttachmentOperations.remove(assetId).finally(() => handleClose());
+    attachmentOperations.remove(assetId).finally(() => handleClose());
   };
 
   if (!attachment) return <></>;
@@ -50,9 +57,10 @@ export const IssueAttachmentDeleteModal: FC<Props> = observer((props) => {
       handleSubmit={() => handleDeletion(attachment.id)}
       isSubmitting={loader}
       isOpen={isOpen}
-      title="Delete attachment"
+      title={t("attachment.delete")}
       content={
         <>
+          {/* TODO: Translate here */}
           Are you sure you want to delete attachment-{" "}
           <span className="font-bold">{getFileName(attachment.attributes.name)}</span>? This attachment will be
           permanently removed. This action cannot be undone.

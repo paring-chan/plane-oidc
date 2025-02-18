@@ -5,12 +5,12 @@ import { useTheme } from "next-themes";
 import { usePopper } from "react-popper";
 import { Check, ChevronDown, Search, SignalHigh } from "lucide-react";
 import { Combobox } from "@headlessui/react";
+import { ISSUE_PRIORITIES } from "@plane/constants";
+import { useTranslation } from "@plane/i18n";
 // types
 import { TIssuePriorities } from "@plane/types";
 // ui
 import { ComboDropDown, PriorityIcon, Tooltip } from "@plane/ui";
-// constants
-import { ISSUE_PRIORITIES } from "@/constants/issue";
 // helpers
 import { cn } from "@/helpers/common.helper";
 // hooks
@@ -63,7 +63,7 @@ const BorderButton = (props: ButtonProps) => {
   const priorityDetails = ISSUE_PRIORITIES.find((p) => p.key === priority);
 
   const priorityClasses = {
-    urgent: "bg-red-500/20 text-red-950 border-red-500",
+    urgent: "bg-red-600/10 text-red-600 border-red-600 px-1",
     high: "bg-orange-500/20 text-orange-950 border-orange-500",
     medium: "bg-yellow-500/20 text-yellow-950 border-yellow-500",
     low: "bg-custom-primary-100/20 text-custom-primary-950 border-custom-primary-100",
@@ -71,11 +71,12 @@ const BorderButton = (props: ButtonProps) => {
   };
 
   const { isMobile } = usePlatformOS();
+  const { t } = useTranslation();
 
   return (
     <Tooltip
-      tooltipHeading="Priority"
-      tooltipContent={priorityDetails?.title ?? "None"}
+      tooltipHeading={t("priority")}
+      tooltipContent={priorityDetails?.title ?? t("common.none")}
       disabled={!showTooltip}
       isMobile={isMobile}
       renderByDefault={renderToolTipByDefault}
@@ -88,7 +89,7 @@ const BorderButton = (props: ButtonProps) => {
             // compact the icons if text is hidden
             "px-0.5": hideText,
             // highlight the whole button if text is hidden and priority is urgent
-            "bg-red-600 border-red-600": priority === "urgent" && hideText && highlightUrgent,
+            "bg-red-600/10 border-red-600": priority === "urgent" && hideText && highlightUrgent,
           },
           className
         )}
@@ -98,7 +99,8 @@ const BorderButton = (props: ButtonProps) => {
             <div
               className={cn({
                 // highlight just the icon if text is visible and priority is urgent
-                "bg-red-600 p-1 rounded": priority === "urgent" && !hideText && highlightUrgent,
+                "bg-red-600/20 p-0.5 rounded border border-red-600":
+                  priority === "urgent" && !hideText && highlightUrgent,
               })}
             >
               <PriorityIcon
@@ -112,7 +114,6 @@ const BorderButton = (props: ButtonProps) => {
                   "translate-x-0.5": hideText && priority === "medium",
                   "translate-x-1": hideText && priority === "low",
                   // highlight the icon if priority is urgent
-                  "text-white": priority === "urgent" && highlightUrgent,
                 })}
               />
             </div>
@@ -145,7 +146,7 @@ const BackgroundButton = (props: ButtonProps) => {
   const priorityDetails = ISSUE_PRIORITIES.find((p) => p.key === priority);
 
   const priorityClasses = {
-    urgent: "bg-red-500/20 text-red-950",
+    urgent: "bg-red-600/20 text-red-600",
     high: "bg-orange-500/20 text-orange-950",
     medium: "bg-yellow-500/20 text-yellow-950",
     low: "bg-blue-500/20 text-blue-950",
@@ -153,11 +154,12 @@ const BackgroundButton = (props: ButtonProps) => {
   };
 
   const { isMobile } = usePlatformOS();
+  const { t } = useTranslation();
 
   return (
     <Tooltip
-      tooltipHeading="Priority"
-      tooltipContent={priorityDetails?.title ?? "None"}
+      tooltipHeading={t("priority")}
+      tooltipContent={t(priorityDetails?.key ?? "none")}
       disabled={!showTooltip}
       isMobile={isMobile}
       renderByDefault={renderToolTipByDefault}
@@ -170,7 +172,7 @@ const BackgroundButton = (props: ButtonProps) => {
             // compact the icons if text is hidden
             "px-0.5": hideText,
             // highlight the whole button if text is hidden and priority is urgent
-            "bg-red-600 border-red-600": priority === "urgent" && hideText && highlightUrgent,
+            "bg-red-600/10 border-red-600": priority === "urgent" && hideText && highlightUrgent,
           },
           className
         )}
@@ -180,7 +182,8 @@ const BackgroundButton = (props: ButtonProps) => {
             <div
               className={cn({
                 // highlight just the icon if text is visible and priority is urgent
-                "bg-red-600 p-1 rounded": priority === "urgent" && !hideText && highlightUrgent,
+                "bg-red-600/20 p-0.5 rounded border border-red-600":
+                  priority === "urgent" && !hideText && highlightUrgent,
               })}
             >
               <PriorityIcon
@@ -194,14 +197,15 @@ const BackgroundButton = (props: ButtonProps) => {
                   "translate-x-0.5": hideText && priority === "medium",
                   "translate-x-1": hideText && priority === "low",
                   // highlight the icon if priority is urgent
-                  "text-white": priority === "urgent" && highlightUrgent,
                 })}
               />
             </div>
           ) : (
             <SignalHigh className="size-3" />
           ))}
-        {!hideText && <span className="flex-grow truncate">{priorityDetails?.title ?? placeholder}</span>}
+        {!hideText && (
+          <span className="flex-grow truncate">{priorityDetails?.title ?? t("common.priority") ?? placeholder}</span>
+        )}
         {dropdownArrow && (
           <ChevronDown className={cn("h-2.5 w-2.5 flex-shrink-0", dropdownArrowClassName)} aria-hidden="true" />
         )}
@@ -236,11 +240,12 @@ const TransparentButton = (props: ButtonProps) => {
   };
 
   const { isMobile } = usePlatformOS();
+  const { t } = useTranslation();
 
   return (
     <Tooltip
-      tooltipHeading="Priority"
-      tooltipContent={priorityDetails?.title ?? "None"}
+      tooltipHeading={t("priority")}
+      tooltipContent={priorityDetails?.title ?? t("common.none")}
       disabled={!showTooltip}
       isMobile={isMobile}
       renderByDefault={renderToolTipByDefault}
@@ -253,7 +258,7 @@ const TransparentButton = (props: ButtonProps) => {
             // compact the icons if text is hidden
             "px-0.5": hideText,
             // highlight the whole button if text is hidden and priority is urgent
-            "bg-red-600 border-red-600": priority === "urgent" && hideText && highlightUrgent,
+            "bg-red-600/10 border-red-600": priority === "urgent" && hideText && highlightUrgent,
             "bg-custom-background-80": isActive,
           },
           className
@@ -264,7 +269,8 @@ const TransparentButton = (props: ButtonProps) => {
             <div
               className={cn({
                 // highlight just the icon if text is visible and priority is urgent
-                "bg-red-600 p-1 rounded": priority === "urgent" && !hideText && highlightUrgent,
+                "bg-red-600/20 p-0.5 rounded border border-red-600":
+                  priority === "urgent" && !hideText && highlightUrgent,
               })}
             >
               <PriorityIcon
@@ -278,14 +284,15 @@ const TransparentButton = (props: ButtonProps) => {
                   "translate-x-0.5": hideText && priority === "medium",
                   "translate-x-1": hideText && priority === "low",
                   // highlight the icon if priority is urgent
-                  "text-white": priority === "urgent" && highlightUrgent,
                 })}
               />
             </div>
           ) : (
             <SignalHigh className="size-3" />
           ))}
-        {!hideText && <span className="flex-grow truncate">{priorityDetails?.title ?? placeholder}</span>}
+        {!hideText && (
+          <span className="flex-grow truncate">{priorityDetails?.title ?? t("common.priority") ?? placeholder}</span>
+        )}
         {dropdownArrow && (
           <ChevronDown className={cn("h-2.5 w-2.5 flex-shrink-0", dropdownArrowClassName)} aria-hidden="true" />
         )}
@@ -295,6 +302,8 @@ const TransparentButton = (props: ButtonProps) => {
 };
 
 export const PriorityDropdown: React.FC<Props> = (props) => {
+  //hooks
+  const { t } = useTranslation();
   const {
     button,
     buttonClassName,
@@ -308,7 +317,7 @@ export const PriorityDropdown: React.FC<Props> = (props) => {
     highlightUrgent = true,
     onChange,
     onClose,
-    placeholder = "Priority",
+    placeholder = t("common.priority"),
     placement,
     showTooltip = false,
     tabIndex,
@@ -336,6 +345,7 @@ export const PriorityDropdown: React.FC<Props> = (props) => {
       },
     ],
   });
+
   // next-themes
   // TODO: remove this after new theming implementation
   const { resolvedTheme } = useTheme();
@@ -384,6 +394,7 @@ export const PriorityDropdown: React.FC<Props> = (props) => {
           className={cn("clickable block h-full w-full outline-none", buttonContainerClassName)}
           onClick={handleOnClick}
           disabled={disabled}
+          tabIndex={tabIndex}
         >
           {button}
         </button>
@@ -401,6 +412,7 @@ export const PriorityDropdown: React.FC<Props> = (props) => {
           )}
           onClick={handleOnClick}
           disabled={disabled}
+          tabIndex={tabIndex}
         >
           <ButtonToRender
             priority={value ?? undefined}
@@ -425,7 +437,6 @@ export const PriorityDropdown: React.FC<Props> = (props) => {
     <ComboDropDown
       as="div"
       ref={dropdownRef}
-      tabIndex={tabIndex}
       className={cn(
         "h-full",
         {
@@ -456,7 +467,7 @@ export const PriorityDropdown: React.FC<Props> = (props) => {
                 className="w-full bg-transparent py-1 text-xs text-custom-text-200 placeholder:text-custom-text-400 focus:outline-none"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search"
+                placeholder={t("search")}
                 displayValue={(assigned: any) => assigned?.name}
                 onKeyDown={searchInputKeyDown}
               />
@@ -482,7 +493,7 @@ export const PriorityDropdown: React.FC<Props> = (props) => {
                   </Combobox.Option>
                 ))
               ) : (
-                <p className="text-custom-text-400 italic py-1 px-1.5">No matching results</p>
+                <p className="text-custom-text-400 italic py-1 px-1.5">{t("no_matching_results")}</p>
               )}
             </div>
           </div>

@@ -1,22 +1,23 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { observer } from "mobx-react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { Control, Controller } from "react-hook-form";
 import useSWR from "swr";
-// headless ui
 import { Tab, Popover } from "@headlessui/react";
-// plane helpers
-import { useOutsideClickDetector } from "@plane/helpers";
+// plane imports
+import { MAX_FILE_SIZE } from "@plane/constants";
+import { useOutsideClickDetector } from "@plane/hooks";
+// plane types
+import { EFileAssetType } from "@plane/types/src/enums";
 // ui
 import { Button, Input, Loader } from "@plane/ui";
-// constants
-import { MAX_FILE_SIZE } from "@/constants/common";
+// helpers
+import { getFileURL } from "@/helpers/file.helper";
 // hooks
-import { useWorkspace, useInstance } from "@/hooks/store";
 import { useDropdownKeyDown } from "@/hooks/use-dropdown-key-down";
 // services
 import { FileService } from "@/services/file.service";
@@ -44,13 +45,14 @@ type Props = {
   disabled?: boolean;
   tabIndex?: number;
   isProfileCover?: boolean;
+  projectId?: string | null;
 };
 
 // services
 const fileService = new FileService();
 
 export const ImagePickerPopover: React.FC<Props> = observer((props) => {
-  const { label, value, control, onChange, disabled = false, tabIndex, isProfileCover = false } = props;
+  const { label, value, control, onChange, disabled = false, tabIndex, isProfileCover = false, projectId } = props;
   // states
   const [image, setImage] = useState<File | null>(null);
   const [isImageUploading, setIsImageUploading] = useState(false);
@@ -63,9 +65,6 @@ export const ImagePickerPopover: React.FC<Props> = observer((props) => {
   const ref = useRef<HTMLDivElement>(null);
   // router params
   const { workspaceSlug } = useParams();
-  // store hooks
-  const { config } = useInstance();
-  const { currentWorkspace } = useWorkspace();
 
   const { data: unsplashImages, error: unsplashError } = useSWR(
     `UNSPLASH_IMAGES_${searchParams}`,
@@ -92,60 +91,44 @@ export const ImagePickerPopover: React.FC<Props> = observer((props) => {
     accept: {
       "image/*": [".png", ".jpg", ".jpeg", ".webp"],
     },
-    maxSize: config?.file_size_limit ?? MAX_FILE_SIZE,
+    maxSize: MAX_FILE_SIZE,
   });
 
   const handleSubmit = async () => {
+    if (!image) return;
     setIsImageUploading(true);
 
-    if (!image) return;
-
-    const formData = new FormData();
-    formData.append("asset", image);
-    formData.append("attributes", JSON.stringify({}));
-
-    const oldValue = value;
-    const isUnsplashImage = oldValue?.split("/")[2] === "images.unsplash.com";
-
-    const uploadCallback = (res: any) => {
-      const imageUrl = res.asset;
-      onChange(imageUrl);
+    const uploadCallback = (url: string) => {
+      onChange(url);
       setIsImageUploading(false);
       setImage(null);
       setIsOpen(false);
     };
 
     if (isProfileCover) {
-      fileService
-        .uploadUserFile(formData)
-        .then((res) => {
-          uploadCallback(res);
-          if (isUnsplashImage) return;
-          if (oldValue && currentWorkspace) fileService.deleteUserFile(oldValue);
-        })
-        .catch((err) => {
-          console.error(err);
-        });
+      await fileService
+        .uploadUserAsset(
+          {
+            entity_identifier: "",
+            entity_type: EFileAssetType.USER_COVER,
+          },
+          image
+        )
+        .then((res) => uploadCallback(res.asset_url));
     } else {
       if (!workspaceSlug) return;
-      fileService
-        .uploadFile(workspaceSlug.toString(), formData)
-        .then((res) => {
-          uploadCallback(res);
-          if (isUnsplashImage) return;
-          if (oldValue && currentWorkspace) fileService.deleteFile(currentWorkspace.id, oldValue);
-        })
-        .catch((err) => {
-          console.error(err);
-        });
+      await fileService
+        .uploadWorkspaceAsset(
+          workspaceSlug.toString(),
+          {
+            entity_identifier: projectId?.toString() ?? "",
+            entity_type: EFileAssetType.PROJECT_COVER,
+          },
+          image
+        )
+        .then((res) => uploadCallback(res.asset_url));
     }
   };
-
-  useEffect(() => {
-    if (!unsplashImages || value !== null) return;
-
-    onChange(unsplashImages[0]?.urls.regular);
-  }, [value, onChange, unsplashImages]);
 
   const handleClose = () => {
     if (isOpen) setIsOpen(false);
@@ -332,7 +315,7 @@ export const ImagePickerPopover: React.FC<Props> = observer((props) => {
                             <Image
                               layout="fill"
                               objectFit="cover"
-                              src={image ? URL.createObjectURL(image) : value ? value : ""}
+                              src={image ? URL.createObjectURL(image) : value ? (getFileURL(value) ?? "") : ""}
                               alt="image"
                               className="rounded-lg"
                             />

@@ -1,5 +1,6 @@
 import { RefObject } from "react";
 import { observer } from "mobx-react";
+import { useTranslation } from "@plane/i18n";
 // components
 import { Row, ERowVariant } from "@plane/ui";
 import { MultipleSelectGroupAction } from "@/components/core";
@@ -21,25 +22,26 @@ type Props = {
   enableSelection: boolean | ((blockId: string) => boolean);
   sidebarToRender: (props: any) => React.ReactNode;
   title: string;
-  getBlockById: (id: string, currentViewData?: ChartDataType | undefined) => IGanttBlock;
   quickAdd?: React.JSX.Element | undefined;
   selectionHelpers: TSelectionHelper;
+  isEpic?: boolean;
 };
 
 export const GanttChartSidebar: React.FC<Props> = observer((props) => {
+  const { t } = useTranslation();
   const {
     blockIds,
     blockUpdateHandler,
     enableReorder,
     enableSelection,
     sidebarToRender,
-    getBlockById,
     loadMoreBlocks,
     canLoadMoreBlocks,
     ganttContainerRef,
     title,
     quickAdd,
     selectionHelpers,
+    isEpic = false,
   } = props;
 
   const isGroupSelectionEmpty = selectionHelpers.isGroupSelected(GANTT_SELECT_GROUP) === "empty";
@@ -77,7 +79,7 @@ export const GanttChartSidebar: React.FC<Props> = observer((props) => {
           )}
           <h6>{title}</h6>
         </div>
-        <h6>Duration</h6>
+        <h6>{t("common.duration")}</h6>
       </Row>
 
       <Row variant={ERowVariant.HUGGING} className="min-h-full h-max bg-custom-background-100 overflow-hidden">
@@ -86,13 +88,13 @@ export const GanttChartSidebar: React.FC<Props> = observer((props) => {
             title,
             blockUpdateHandler,
             blockIds,
-            getBlockById,
             enableReorder,
             enableSelection,
             canLoadMoreBlocks,
             ganttContainerRef,
             loadMoreBlocks,
             selectionHelpers,
+            isEpic,
           })}
       </Row>
       {quickAdd ? quickAdd : null}

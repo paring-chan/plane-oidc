@@ -4,19 +4,27 @@ import { useEffect } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-// types
+// plane types
+import { PROJECT_BACKGROUND_COLORS, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { TRecentProjectsWidgetResponse } from "@plane/types";
-// ui
+// plane ui
 import { Avatar, AvatarGroup, Card } from "@plane/ui";
-
 // components
 import { Logo } from "@/components/common";
 import { WidgetLoader, WidgetProps } from "@/components/dashboard/widgets";
 // constants
-import { PROJECT_BACKGROUND_COLORS } from "@/constants/dashboard";
+// helpers
+import { getFileURL } from "@/helpers/file.helper";
 // hooks
-import { useEventTracker, useDashboard, useProject, useCommandPalette, useUserPermissions } from "@/hooks/store";
-import { EUserPermissions, EUserPermissionsLevel } from "@/plane-web/constants/user-permissions";
+import {
+  useEventTracker,
+  useDashboard,
+  useProject,
+  useCommandPalette,
+  useUserPermissions,
+  useMember,
+} from "@/hooks/store";
+// plane web constants
 
 const WIDGET_KEY = "recent_projects";
 
@@ -29,6 +37,8 @@ const ProjectListItem: React.FC<ProjectListItemProps> = observer((props) => {
   const { projectId, workspaceSlug } = props;
   // store hooks
   const { getProjectById } = useProject();
+  const { getUserDetails } = useMember();
+  // derived values
   const projectDetails = getProjectById(projectId);
 
   const randomBgColor = PROJECT_BACKGROUND_COLORS[Math.floor(Math.random() * PROJECT_BACKGROUND_COLORS.length)];
@@ -50,9 +60,13 @@ const ProjectListItem: React.FC<ProjectListItemProps> = observer((props) => {
         </h6>
         <div className="mt-2">
           <AvatarGroup>
-            {projectDetails.members?.map((member) => (
-              <Avatar key={member.member_id} src={member.member__avatar} name={member.member__display_name} />
-            ))}
+            {projectDetails.members?.map((memberId) => {
+              const userDetails = getUserDetails(memberId);
+              if (!userDetails) return null;
+              return (
+                <Avatar key={userDetails.id} src={getFileURL(userDetails.avatar_url)} name={userDetails.display_name} />
+              );
+            })}
           </AvatarGroup>
         </div>
       </div>

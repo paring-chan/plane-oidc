@@ -1,56 +1,45 @@
 "use client";
 import { FC, useState } from "react";
 import { observer } from "mobx-react";
-import { CircleDot, CopyPlus, XCircle } from "lucide-react";
-import { TIssue, TIssueRelationIdMap } from "@plane/types";
-import { Collapsible, RelatedIcon } from "@plane/ui";
+// plane imports
+import { EIssueServiceType } from "@plane/constants";
+import { useTranslation } from "@plane/i18n";
+import { TIssue, TIssueServiceType } from "@plane/types";
+import { Collapsible } from "@plane/ui";
 // components
 import { RelationIssueList } from "@/components/issues";
 import { DeleteIssueModal } from "@/components/issues/delete-issue-modal";
 import { CreateUpdateIssueModal } from "@/components/issues/issue-modal";
 // hooks
 import { useIssueDetail } from "@/hooks/store";
+// Plane-web
+import { CreateUpdateEpicModal } from "@/plane-web/components/epics";
+import { useTimeLineRelationOptions } from "@/plane-web/components/relations";
+import { TIssueRelationTypes } from "@/plane-web/types";
 // helper
 import { useRelationOperations } from "./helper";
 
 type Props = {
   workspaceSlug: string;
-  projectId: string;
   issueId: string;
   disabled: boolean;
+  issueServiceType?: TIssueServiceType;
 };
-
-const ISSUE_RELATION_OPTIONS = [
-  {
-    key: "blocked_by",
-    label: "Blocked by",
-    icon: (size: number) => <CircleDot size={size} />,
-    className: "bg-red-500/20 text-red-700",
-  },
-  {
-    key: "blocking",
-    label: "Blocking",
-    icon: (size: number) => <XCircle size={size} />,
-    className: "bg-yellow-500/20 text-yellow-700",
-  },
-  {
-    key: "relates_to",
-    label: "Relates to",
-    icon: (size: number) => <RelatedIcon height={size} width={size} />,
-    className: "bg-custom-background-80 text-custom-text-200",
-  },
-  {
-    key: "duplicate",
-    label: "Duplicate of",
-    icon: (size: number) => <CopyPlus size={size} />,
-    className: "bg-custom-background-80 text-custom-text-200",
-  },
-];
 
 type TIssueCrudState = { toggle: boolean; issueId: string | undefined; issue: TIssue | undefined };
 
+export type TRelationObject = {
+  key: TIssueRelationTypes;
+  i18n_label: string;
+  className: string;
+  icon: (size: number) => React.ReactElement;
+  placeholder: string;
+};
+
 export const RelationsCollapsibleContent: FC<Props> = observer((props) => {
-  const { workspaceSlug, projectId, issueId, disabled = false } = props;
+  const { workspaceSlug, issueId, disabled = false, issueServiceType = EIssueServiceType.ISSUES } = props;
+  // plane hooks
+  const { t } = useTranslation();
   // state
   const [issueCrudState, setIssueCrudState] = useState<{
     update: TIssueCrudState;
@@ -73,13 +62,15 @@ export const RelationsCollapsibleContent: FC<Props> = observer((props) => {
     relation: { getRelationsByIssueId },
     toggleDeleteIssueModal,
     toggleCreateIssueModal,
-  } = useIssueDetail();
+  } = useIssueDetail(issueServiceType);
 
   // helper
   const issueOperations = useRelationOperations();
+  const epicOperations = useRelationOperations(EIssueServiceType.EPICS);
 
   // derived values
   const relations = getRelationsByIssueId(issueId);
+  const ISSUE_RELATION_OPTIONS = useTimeLineRelationOptions();
 
   const handleIssueCrudState = (key: "update" | "delete", _issueId: string | null, issue: TIssue | null = null) => {
     setIssueCrudState({
@@ -96,17 +87,19 @@ export const RelationsCollapsibleContent: FC<Props> = observer((props) => {
   if (!relations) return null;
 
   // map relations to array
-  const relationsArray = Object.keys(relations).map((relationKey) => {
-    const issueIds = relations[relationKey as keyof TIssueRelationIdMap];
-    const issueRelationOption = ISSUE_RELATION_OPTIONS.find((option) => option.key === relationKey);
-    return {
-      relationKey: relationKey as keyof TIssueRelationIdMap,
-      issueIds: issueIds,
-      icon: issueRelationOption?.icon,
-      label: issueRelationOption?.label,
-      className: issueRelationOption?.className,
-    };
-  });
+  const relationsArray = (Object.keys(relations) as TIssueRelationTypes[])
+    .filter((relationKey) => !!ISSUE_RELATION_OPTIONS[relationKey])
+    .map((relationKey) => {
+      const issueIds = relations[relationKey];
+      const issueRelationOption = ISSUE_RELATION_OPTIONS[relationKey];
+      return {
+        relationKey: relationKey,
+        issueIds: issueIds,
+        icon: issueRelationOption?.icon,
+        label: issueRelationOption?.i18n_label ? t(issueRelationOption?.i18n_label) : "",
+        className: issueRelationOption?.className,
+      };
+    });
 
   // filter out relations with no issues
   const filteredRelationsArray = relationsArray.filter((relation) => relation.issueIds.length > 0);
@@ -136,13 +129,12 @@ export const RelationsCollapsibleContent: FC<Props> = observer((props) => {
             >
               <RelationIssueList
                 workspaceSlug={workspaceSlug}
-                projectId={projectId}
                 issueId={issueId}
                 relationKey={relation.relationKey}
                 issueIds={relation.issueIds}
                 disabled={disabled}
-                issueOperations={issueOperations}
                 handleIssueCrudState={handleIssueCrudState}
+                issueServiceType={issueServiceType}
               />
             </Collapsible>
           </div>
@@ -157,24 +149,56 @@ export const RelationsCollapsibleContent: FC<Props> = observer((props) => {
             toggleDeleteIssueModal(null);
           }}
           data={issueCrudState?.delete?.issue as TIssue}
-          onSubmit={async () =>
-            await issueOperations.remove(workspaceSlug, projectId, issueCrudState?.delete?.issue?.id as string)
-          }
+          onSubmit={async () => {
+            if (
+              issueCrudState.delete.issue &&
+              issueCrudState.delete.issue.id &&
+              issueCrudState.delete.issue.project_id
+            ) {
+              const deleteOperation = !!issueCrudState.delete.issue?.is_epic
+                ? epicOperations.remove
+                : issueOperations.remove;
+              await deleteOperation(
+                workspaceSlug,
+                issueCrudState.delete.issue?.project_id,
+                issueCrudState?.delete?.issue?.id as string
+              );
+            }
+          }}
+          isEpic={!!issueCrudState.delete.issue?.is_epic}
         />
       )}
 
       {shouldRenderIssueUpdateModal && (
-        <CreateUpdateIssueModal
-          isOpen={issueCrudState?.update?.toggle}
-          onClose={() => {
-            handleIssueCrudState("update", null, null);
-            toggleCreateIssueModal(false);
-          }}
-          data={issueCrudState?.update?.issue ?? undefined}
-          onSubmit={async (_issue: TIssue) => {
-            await issueOperations.update(workspaceSlug, projectId, _issue.id, _issue);
-          }}
-        />
+        <>
+          {!!issueCrudState?.update?.issue?.is_epic ? (
+            <CreateUpdateEpicModal
+              isOpen={issueCrudState?.update?.toggle}
+              onClose={() => {
+                handleIssueCrudState("update", null, null);
+                toggleCreateIssueModal(false);
+              }}
+              data={issueCrudState?.update?.issue ?? undefined}
+              onSubmit={async (_issue: TIssue) => {
+                if (!_issue.id || !_issue.project_id) return;
+                await epicOperations.update(workspaceSlug, _issue.project_id, _issue.id, _issue);
+              }}
+            />
+          ) : (
+            <CreateUpdateIssueModal
+              isOpen={issueCrudState?.update?.toggle}
+              onClose={() => {
+                handleIssueCrudState("update", null, null);
+                toggleCreateIssueModal(false);
+              }}
+              data={issueCrudState?.update?.issue ?? undefined}
+              onSubmit={async (_issue: TIssue) => {
+                if (!_issue.id || !_issue.project_id) return;
+                await issueOperations.update(workspaceSlug, _issue.project_id, _issue.id, _issue);
+              }}
+            />
+          )}
+        </>
       )}
     </>
   );

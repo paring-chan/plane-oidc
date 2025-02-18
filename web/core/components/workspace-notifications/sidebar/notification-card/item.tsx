@@ -9,6 +9,7 @@ import { NotificationOption } from "@/components/workspace-notifications";
 // helpers
 import { cn } from "@/helpers/common.helper";
 import { calculateTimeAgo, renderFormattedDate, renderFormattedTime } from "@/helpers/date-time.helper";
+import { getFileURL } from "@/helpers/file.helper";
 import { sanitizeCommentForNotification } from "@/helpers/notification.helper";
 import { replaceUnderscoreIfSnakeCase, stripAndTruncateHTML } from "@/helpers/string.helper";
 // hooks
@@ -76,7 +77,7 @@ export const NotificationItem: FC<TNotificationItem> = observer((props) => {
           {notificationTriggeredBy && (
             <Avatar
               name={notificationTriggeredBy.display_name || notificationTriggeredBy?.first_name}
-              src={notificationTriggeredBy.avatar ?? undefined}
+              src={getFileURL(notificationTriggeredBy.avatar_url)}
               size={42}
               shape="circle"
               className="!text-base !bg-custom-background-80"
@@ -99,8 +100,8 @@ export const NotificationItem: FC<TNotificationItem> = observer((props) => {
                     ? "commented"
                     : notificationField === "archived_at"
                       ? notification?.data?.issue_activity.new_value === "restore"
-                        ? "restored the issue"
-                        : "archived the issue"
+                        ? "restored the work item"
+                        : "archived the work item"
                       : notificationField === "None"
                         ? null
                         : replaceUnderscoreIfSnakeCase(notificationField)}{" "}
@@ -114,7 +115,7 @@ export const NotificationItem: FC<TNotificationItem> = observer((props) => {
                             notificationField === "target_date" ? (
                               renderFormattedDate(notification?.data?.issue_activity.new_value)
                             ) : notificationField === "attachment" ? (
-                              "the issue"
+                              "the work item"
                             ) : notificationField === "description" ? (
                               stripAndTruncateHTML(notification?.data?.issue_activity.new_value || "", 55)
                             ) : notificationField === "archived_at" ? null : (
@@ -128,7 +129,7 @@ export const NotificationItem: FC<TNotificationItem> = observer((props) => {
                             </span>
                           )
                         ) : (
-                          "the issue and assigned it to you."
+                          "the work item and assigned it to you."
                         )}
                       </span>
                     </>

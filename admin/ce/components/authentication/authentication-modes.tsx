@@ -11,7 +11,7 @@ import {
 import { AuthenticationMethodCard } from "@/components/authentication";
 import { OpenIDConnectConfiguration } from "@/components/authentication/oidc-config";
 // helpers
-import { getBaseAuthenticationModes } from "@/helpers/authentication.helper";
+import { getBaseAuthenticationModes } from "@/lib/auth-helpers";
 // plane admin components
 import { UpgradeButton } from "@/plane-admin/components/common";
 // images

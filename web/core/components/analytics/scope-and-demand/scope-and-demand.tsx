@@ -2,6 +2,7 @@
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 // ui
+import { useTranslation } from "@plane/i18n";
 import { Button, ContentWrapper, Loader } from "@plane/ui";
 // components
 import { AnalyticsDemand, AnalyticsLeaderBoard, AnalyticsScope, AnalyticsYearWiseIssues } from "@/components/analytics";
@@ -21,6 +22,7 @@ export const ScopeAndDemand: React.FC<Props> = (props) => {
   const { fullScreen = true } = props;
 
   const { workspaceSlug, projectId, cycleId, moduleId } = useParams();
+  const { t } = useTranslation();
 
   const isProjectLevel = projectId ? true : false;
 
@@ -59,28 +61,28 @@ export const ScopeAndDemand: React.FC<Props> = (props) => {
               />
               <AnalyticsLeaderBoard
                 users={defaultAnalytics.most_issue_created_user?.map((user) => ({
-                  avatar: user?.created_by__avatar,
+                  avatar_url: user?.created_by__avatar_url,
                   firstName: user?.created_by__first_name,
                   lastName: user?.created_by__last_name,
                   display_name: user?.created_by__display_name,
                   count: user?.count,
                   id: user?.created_by__id,
                 }))}
-                title="Most issues created"
-                emptyStateMessage="Co-workers and the number of issues created by them appears here."
+                title={t("workspace_analytics.most_work_items_created.title")}
+                emptyStateMessage={t("workspace_analytics.most_work_items_created.empty_state")}
                 workspaceSlug={workspaceSlug?.toString() ?? ""}
               />
               <AnalyticsLeaderBoard
                 users={defaultAnalytics.most_issue_closed_user?.map((user) => ({
-                  avatar: user?.assignees__avatar,
+                  avatar_url: user?.assignees__avatar_url,
                   firstName: user?.assignees__first_name,
                   lastName: user?.assignees__last_name,
                   display_name: user?.assignees__display_name,
                   count: user?.count,
                   id: user?.assignees__id,
                 }))}
-                title="Most issues closed"
-                emptyStateMessage="Co-workers and the number of issues closed by them appears here."
+                title={t("workspace_analytics.most_work_items_closed.title")}
+                emptyStateMessage={t("workspace_analytics.most_work_items_closed.empty_state")}
                 workspaceSlug={workspaceSlug?.toString() ?? ""}
               />
               <div className={fullScreen ? "md:col-span-2" : ""}>
@@ -99,10 +101,10 @@ export const ScopeAndDemand: React.FC<Props> = (props) => {
       ) : (
         <div className="grid h-full place-items-center p-5">
           <div className="space-y-4 text-custom-text-200">
-            <p className="text-sm">There was some error in fetching the data.</p>
+            <p className="text-sm">{t("workspace_analytics.error")}</p>
             <div className="flex items-center justify-center gap-2">
               <Button variant="primary" onClick={() => mutateDefaultAnalytics()}>
-                Refresh
+                {t("refresh")}
               </Button>
             </div>
           </div>

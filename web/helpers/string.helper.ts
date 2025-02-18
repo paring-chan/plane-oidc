@@ -68,14 +68,15 @@ export const copyTextToClipboard = async (text: string) => {
 /**
  * @description: This function copies the url to clipboard after prepending the origin URL to it
  * @param {string} path
+ * @param {boolean} addSlash
  * @example:
  * const text = copyUrlToClipboard("path");
  * copied URL: origin_url/path
  */
-export const copyUrlToClipboard = async (path: string) => {
+export const copyUrlToClipboard = async (path: string, addSlash: boolean = true) => {
   const originUrl = typeof window !== "undefined" && window.location.origin ? window.location.origin : "";
 
-  await copyTextToClipboard(`${originUrl}/${path}`);
+  await copyTextToClipboard(`${originUrl}${addSlash ? "/" : ""}${path}`);
 };
 
 export const generateRandomColor = (string: string): string => {
@@ -269,8 +270,10 @@ export const isCommentEmpty = (comment: string | undefined): boolean => {
  */
 export const checkURLValidity = (url: string): boolean => {
   if (!url) return false;
-  // regex to match valid URLs (with or without http/https)
-  const urlPattern = /^(https?:\/\/)?([\w.-]+\.[a-z]{2,6})(\/[\w\-.~:/?#[\]@!$&'()*+,;=%]*)?$/i;
-  // test if the URL matches the pattern
+
+  // regex to support complex query parameters and fragments
+  const urlPattern =
+    /^(https?:\/\/)?((([a-z\d-]+\.)*[a-z\d-]+\.[a-z]{2,6})|(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(:\d+)?(\/[\w.-]*)*(\?[^#\s]*)?(#[\w-]*)?$/i;
+
   return urlPattern.test(url);
 };

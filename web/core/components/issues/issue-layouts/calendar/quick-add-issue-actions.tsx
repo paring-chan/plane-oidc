@@ -1,19 +1,22 @@
 "use client";
 
 import { FC, useState } from "react";
-import { differenceInCalendarDays } from "date-fns";
+import { differenceInCalendarDays } from "date-fns/differenceInCalendarDays";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { PlusIcon } from "lucide-react";
+// plane constants
+import { EIssueLayoutTypes } from "@plane/constants";
+// i18n
+import { useTranslation } from "@plane/i18n";
 // types
 import { ISearchIssueResponse, TIssue } from "@plane/types";
 // ui
-import { TOAST_TYPE, setToast, CustomMenu } from "@plane/ui";
+import { CustomMenu, setPromiseToast } from "@plane/ui";
 // components
 import { ExistingIssuesListModal } from "@/components/core";
 import { QuickAddIssueRoot } from "@/components/issues";
 // helpers
-import { EIssueLayoutTypes } from "@/constants/issue";
 import { cn } from "@/helpers/common.helper";
 // hooks
 import { useIssueDetail } from "@/hooks/store";
@@ -23,10 +26,12 @@ type TCalendarQuickAddIssueActions = {
   quickAddCallback?: (projectId: string | null | undefined, data: TIssue) => Promise<TIssue | undefined>;
   addIssuesToView?: (issueIds: string[]) => Promise<any>;
   onOpen?: () => void;
+  isEpic?: boolean;
 };
 
 export const CalendarQuickAddIssueActions: FC<TCalendarQuickAddIssueActions> = observer((props) => {
-  const { prePopulatedData, quickAddCallback, addIssuesToView, onOpen } = props;
+  const { prePopulatedData, quickAddCallback, addIssuesToView, onOpen, isEpic = false } = props;
+  const { t } = useTranslation();
   // router
   const { workspaceSlug, projectId, moduleId } = useParams();
   // states
@@ -45,22 +50,21 @@ export const CalendarQuickAddIssueActions: FC<TCalendarQuickAddIssueActions> = o
     if (!workspaceSlug || !projectId) return;
 
     const issueIds = data.map((i) => i.id);
+    const addExistingIssuesPromise = Promise.all(
+      data.map((issue) => updateIssue(workspaceSlug.toString(), projectId.toString(), issue.id, prePopulatedData ?? {}))
+    ).then(() => addIssuesToView?.(issueIds));
 
-    try {
-      // To handle all updates in parallel
-      await Promise.all(
-        data.map((issue) =>
-          updateIssue(workspaceSlug.toString(), projectId.toString(), issue.id, prePopulatedData ?? {})
-        )
-      );
-      await addIssuesToView?.(issueIds);
-    } catch (error) {
-      setToast({
-        type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "Something went wrong. Please try again.",
-      });
-    }
+    setPromiseToast(addExistingIssuesPromise, {
+      loading: t("issue.adding", { count: issueIds.length }),
+      success: {
+        title: t("toast.success"),
+        message: () => t("entity.add.success", { entity: t("issue.label", { count: 2 }) }),
+      },
+      error: {
+        title: t("toast.error"),
+        message: (err) => err?.message || t("common.errors.default.message"),
+      },
+    });
   };
 
   const handleNewIssue = () => {
@@ -118,15 +122,22 @@ export const CalendarQuickAddIssueActions: FC<TCalendarQuickAddIssueActions> = o
               customButton={
                 <div className="flex w-full items-center gap-x-[6px] rounded-md px-2 py-1.5 text-custom-text-350 hover:text-custom-text-300">
                   <PlusIcon className="h-3.5 w-3.5 stroke-2 flex-shrink-0" />
-                  <span className="text-sm font-medium flex-shrink-0">New issue</span>
+                  <span className="text-sm font-medium flex-shrink-0">
+                    {isEpic ? t("epic.add.label") : t("issue.add.label")}
+                  </span>
                 </div>
               }
             >
-              <CustomMenu.MenuItem onClick={handleNewIssue}>New issue</CustomMenu.MenuItem>
-              <CustomMenu.MenuItem onClick={handleExistingIssue}>Add existing issue</CustomMenu.MenuItem>
+              <CustomMenu.MenuItem onClick={handleNewIssue}>
+                {isEpic ? t("epic.add.label") : t("issue.add.label")}
+              </CustomMenu.MenuItem>
+              {!isEpic && (
+                <CustomMenu.MenuItem onClick={handleExistingIssue}>{t("issue.add.existing")}</CustomMenu.MenuItem>
+              )}
             </CustomMenu>
           </div>
         }
+        isEpic={isEpic}
       />
     </>
   );

@@ -4,30 +4,38 @@ import React, { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { Control, Controller } from "react-hook-form";
 import { Sparkle } from "lucide-react";
+// plane imports
+import { ETabIndices } from "@plane/constants";
 // editor
 import { EditorRefApi } from "@plane/editor";
+// i18n
+import { useTranslation } from "@plane/i18n";
 // types
 import { TIssue } from "@plane/types";
+import { EFileAssetType } from "@plane/types/src/enums";
 // ui
 import { Loader, setToast, TOAST_TYPE } from "@plane/ui";
 // components
 import { GptAssistantPopover } from "@/components/core";
 import { RichTextEditor } from "@/components/editor";
-// constants
-import { ETabIndices } from "@/constants/tab-indices";
 // helpers
-import { getDescriptionPlaceholder } from "@/helpers/issue.helper";
+import { getDescriptionPlaceholderI18n } from "@/helpers/issue.helper";
 import { getTabIndex } from "@/helpers/tab-indices.helper";
 // hooks
 import { useInstance, useWorkspace } from "@/hooks/store";
 import useKeypress from "@/hooks/use-keypress";
 import { usePlatformOS } from "@/hooks/use-platform-os";
+// plane web services
+import { WorkspaceService } from "@/plane-web/services";
 // services
 import { AIService } from "@/services/ai.service";
+import { FileService } from "@/services/file.service";
 
 type TIssueDescriptionEditorProps = {
   control: Control<TIssue>;
+  isDraft: boolean;
   issueName: string;
+  issueId: string | undefined;
   descriptionHtmlData: string | undefined;
   editorRef: React.MutableRefObject<EditorRefApi | null>;
   submitBtnRef: React.MutableRefObject<HTMLButtonElement | null>;
@@ -38,16 +46,21 @@ type TIssueDescriptionEditorProps = {
   handleDescriptionHTMLDataChange: (descriptionHtmlData: string) => void;
   setGptAssistantModal: React.Dispatch<React.SetStateAction<boolean>>;
   handleGptAssistantClose: () => void;
+  onAssetUpload: (assetId: string) => void;
   onClose: () => void;
 };
 
 // services
+const workspaceService = new WorkspaceService();
 const aiService = new AIService();
+const fileService = new FileService();
 
 export const IssueDescriptionEditor: React.FC<TIssueDescriptionEditorProps> = observer((props) => {
   const {
     control,
+    isDraft,
     issueName,
+    issueId,
     descriptionHtmlData,
     editorRef,
     submitBtnRef,
@@ -58,8 +71,11 @@ export const IssueDescriptionEditor: React.FC<TIssueDescriptionEditorProps> = ob
     handleDescriptionHTMLDataChange,
     setGptAssistantModal,
     handleGptAssistantClose,
+    onAssetUpload,
     onClose,
   } = props;
+  // i18n
+  const { t } = useTranslation();
   // states
   const [iAmFeelingLucky, setIAmFeelingLucky] = useState(false);
   // store hooks
@@ -105,7 +121,7 @@ export const IssueDescriptionEditor: React.FC<TIssueDescriptionEditorProps> = ob
     aiService
       .createGptTask(workspaceSlug.toString(), {
         prompt: issueName,
-        task: "Generate a proper description for this issue.",
+        task: "Generate a proper description for this work item.",
       })
       .then((res) => {
         if (res.response === "")
@@ -113,7 +129,7 @@ export const IssueDescriptionEditor: React.FC<TIssueDescriptionEditorProps> = ob
             type: TOAST_TYPE.ERROR,
             title: "Error!",
             message:
-              "Issue title isn't informative enough to generate the description. Please try with a different title.",
+              "Work item title isn't informative enough to generate the description. Please try with a different title.",
           });
         else handleAiAssistance(res.response_html);
       })
@@ -178,8 +194,34 @@ export const IssueDescriptionEditor: React.FC<TIssueDescriptionEditorProps> = ob
                 onEnterKeyPress={() => submitBtnRef?.current?.click()}
                 ref={editorRef}
                 tabIndex={getIndex("description_html")}
-                placeholder={getDescriptionPlaceholder}
+                placeholder={(isFocused, description) => t(getDescriptionPlaceholderI18n(isFocused, description))}
+                searchMentionCallback={async (payload) =>
+                  await workspaceService.searchEntity(workspaceSlug?.toString() ?? "", {
+                    ...payload,
+                    project_id: projectId?.toString() ?? "",
+                  })
+                }
                 containerClassName="pt-3 min-h-[120px]"
+                uploadFile={async (file) => {
+                  try {
+                    const { asset_id } = await fileService.uploadProjectAsset(
+                      workspaceSlug,
+                      projectId,
+                      {
+                        entity_identifier: issueId ?? "",
+                        entity_type: isDraft
+                          ? EFileAssetType.DRAFT_ISSUE_DESCRIPTION
+                          : EFileAssetType.ISSUE_DESCRIPTION,
+                      },
+                      file
+                    );
+                    onAssetUpload(asset_id);
+                    return asset_id;
+                  } catch (error) {
+                    console.log("Error in uploading issue asset:", error);
+                    throw new Error("Asset upload failed. Please try again later.");
+                  }
+                }}
               />
             )}
           />
@@ -220,12 +262,14 @@ export const IssueDescriptionEditor: React.FC<TIssueDescriptionEditorProps> = ob
                     type="button"
                     className="flex items-center gap-1 rounded px-1.5 py-1 text-xs bg-custom-background-90 hover:bg-custom-background-80"
                     onClick={() => setGptAssistantModal((prevData) => !prevData)}
-                    tabIndex={getIndex("ai_assistant")}
+                    tabIndex={-1}
                   >
                     <Sparkle className="h-4 w-4" />
                     AI
                   </button>
                 }
+                workspaceSlug={workspaceSlug}
+                projectId={projectId}
               />
             )}
           </div>
